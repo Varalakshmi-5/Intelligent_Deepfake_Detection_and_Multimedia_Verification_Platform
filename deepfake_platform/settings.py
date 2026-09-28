@@ -9,16 +9,8 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 _env_path = BASE_DIR / ".env"
-if not _env_path.exists():
-    print("=" * 70)
-    print("[WARNING] No .env file found at:", _env_path)
-    print("          The app is running entirely on default settings.")
-    print("          Run this once to fix it:")
-    print("              cp .env.example .env      (Mac/Linux)")
-    print("              copy .env.example .env    (Windows)")
-    print("          Then restart the server.")
-    print("=" * 70)
-load_dotenv(_env_path)
+if _env_path.exists():
+    load_dotenv(_env_path)
 
 # --------------------------------------------------------------
 # Core
