@@ -1,0 +1,244 @@
+{% extends "app_base.html" %}
+{% load static %}
+{% block title %}Document Analysis · VeriScan AI{% endblock %}
+{% block app_content %}
+<div style="max-width:1000px;">
+  <h1>📄 Document Forensic Analysis</h1>
+  <p class="mb-24">Upload a PDF or an image of a document. This runs a rule-based forensic pipeline — PDF metadata/revision checks, Error Level Analysis, copy-move detection, and OCR — not a trained AI classifier. Every flag below is explainable, not a black-box confidence score.</p>
+
+  {% if not result %}
+  <div class="card" style="max-width:640px;">
+    <form method="post" enctype="multipart/form-data" id="upload-form">
+      {% csrf_token %}
+      <label for="document-input" class="dropzone" id="dropzone">
+        <div class="icon">📤</div>
+        <div id="dropzone-text"><strong>Click to upload</strong> or drag and drop<br><span class="link-muted">PDF, JPG, or PNG</span></div>
+        <input type="file" id="document-input" name="document" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" required>
+      </label>
+      <button type="submit" class="btn btn-primary btn-block mt-16" id="submit-btn">Analyze Document</button>
+    </form>
+  </div>
+
+  {% if not tesseract_available %}
+  <div class="msg error mt-16" style="max-width:640px;">
+    <strong>Note:</strong> OCR text extraction is unavailable on this server (Tesseract OCR is not installed). All other checks — metadata, ELA, and copy-move detection — still work normally.
+  </div>
+  {% endif %}
+
+  <script>
+    const input = document.getElementById('document-input');
+    const zone = document.getElementById('dropzone');
+    const text = document.getElementById('dropzone-text');
+    const form = document.getElementById('upload-form');
+    const submitBtn = document.getElementById('submit-btn');
+
+    input.addEventListener('change', () => {
+      if (input.files[0]) {
+        text.innerHTML = '<strong>' + input.files[0].name + '</strong><br><span class="link-muted">Ready to analyze</span>';
+      }
+    });
+    ['dragover'].forEach(evt => zone.addEventListener(evt, e => { e.preventDefault(); zone.classList.add('dragover'); }));
+    ['dragleave', 'drop'].forEach(evt => zone.addEventListener(evt, e => { e.preventDefault(); zone.classList.remove('dragover'); }));
+    zone.addEventListener('drop', e => {
+      if (e.dataTransfer.files[0]) {
+        input.files = e.dataTransfer.files;
+        input.dispatchEvent(new Event('change'));
+      }
+    });
+    form.addEventListener('submit', () => {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Analyzing...';
+    });
+  </script>
+
+  {% else %}
+
+  <div class="verdict-banner {% if result.risk_tier == 'LOW' %}real{% else %}fake{% endif %}">
+    <div>
+      <h2>
+        {% if result.risk_tier == 'LOW' %}✅ {{ result.verdict }}
+        {% elif result.risk_tier == 'MEDIUM' %}⚠️ {{ result.verdict }}
+        {% else %}🚩 {{ result.verdict }}{% endif %}
+      </h2>
+      <p style="color:inherit; opacity:0.8;">{{ result.filename }} · {{ result.page_count }} page(s) analyzed · {{ result.analyzed_at }}</p>
+    </div>
+    <div class="text-center">
+      <div class="confidence-num">{{ result.risk_tier }}</div>
+      <div style="font-size:12px; opacity:0.75;">risk level</div>
+    </div>
+  </div>
+
+  <div class="mt-16 mb-16 flex justify-between items-center card p-12">
+    <div>
+      <strong>🎙️ Voice Assistant Summary:</strong> <span class="text-secondary fs-13">Hear AI verdict, model accuracy & key findings.</span>
+    </div>
+    <button type="button" class="btn btn-outline btn-sm" onclick="speakDocumentResult()">
+      🔊 Listen to Voice Summary
+    </button>
+  </div>
+
+
+  <div class="flex gap-12 mb-24">
+    <a href="{% url 'detection:analyze_document' %}" class="btn btn-outline">Analyze Another Document</a>
+    <a href="/report/{{ result.detection_id }}/download/" class="btn btn-primary">⬇ Download Full Report (PDF)</a>
+    {% if result.risk_tier == 'LOW' %}
+    <a href="/certificate/{{ result.detection_id }}/download/" class="btn btn-outline">🎖 Download Verified Certificate</a>
+    {% endif %}
+  </div>
+
+  <div class="analysis-tabs">
+    <div class="analysis-tab-btn active" onclick="showAnalysisTab('findings')">Findings</div>
+    <div class="analysis-tab-btn" onclick="showAnalysisTab('info')">Document Info</div>
+    <div class="analysis-tab-btn" onclick="showAnalysisTab('forensics')">Page Forensics</div>
+    <div class="analysis-tab-btn" onclick="showAnalysisTab('text')">Extracted Text</div>
+    <div class="analysis-tab-btn" onclick="showAnalysisTab('report')">Complete Report</div>
+  </div>
+
+  <!-- FINDINGS -->
+  <div class="analysis-panel active" id="panel-findings">
+    <div class="card">
+      <div class="section-title">What we found</div>
+      {% for flag in result.flags %}
+      <div class="flex items-center gap-12" style="padding:10px 0; border-bottom:1px solid var(--border);">
+        <span style="font-size:18px;">{% if "No tampering" in flag %}✅{% else %}🔍{% endif %}</span>
+        <span style="font-size:14px;">{{ flag }}</span>
+      </div>
+      {% endfor %}
+      <p class="link-muted mt-16" style="font-size:12px;">This is a rule-based forensic assessment, not an AI prediction. Each flag is deterministic and explainable — treat results as leads for further review, not definitive proof of forgery.</p>
+    </div>
+  </div>
+
+  <!-- DOCUMENT INFO -->
+  <div class="analysis-panel" id="panel-info">
+    <div class="card">
+      <div class="section-title">File Details</div>
+      <table class="kv-table">
+        <tr><td>Filename</td><td>{{ result.filename }}</td></tr>
+        <tr><td>File Type</td><td>{{ result.file_type }}</td></tr>
+        <tr><td>Pages Analyzed</td><td>{{ result.page_count }}</td></tr>
+      </table>
+    </div>
+
+    {% if result.pdf_meta %}
+    <div class="card mt-24">
+      <div class="section-title">PDF Metadata &amp; Revision Forensics</div>
+      <table class="kv-table">
+        <tr><td>Creation Date</td><td>{{ result.pdf_meta.creation_date }}</td></tr>
+        <tr><td>Modification Date</td><td>{{ result.pdf_meta.modification_date }}</td></tr>
+        <tr><td>Producer</td><td>{{ result.pdf_meta.producer }}</td></tr>
+        <tr><td>Creator</td><td>{{ result.pdf_meta.creator }}</td></tr>
+        <tr><td>Incremental Updates</td><td>{{ result.pdf_meta.incremental_updates }}</td></tr>
+        <tr><td>Digital Signature</td><td>{% if result.pdf_meta.has_digital_signature %}Present{% else %}Not present{% endif %}</td></tr>
+        <tr><td>File Size</td><td>{{ result.pdf_meta.file_size_kb }} KB</td></tr>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- PAGE FORENSICS -->
+  <div class="analysis-panel" id="panel-forensics">
+    {% for page in result.pages %}
+    <div class="card mt-16">
+      <div class="section-title">Page {{ page.page_num }}</div>
+      <div class="two-col">
+        <div>
+          <p style="font-size:13px;">Error Level Analysis</p>
+          {% if page.ela_url %}
+          <img src="{{ page.ela_url }}" class="img-preview" alt="ELA page {{ page.page_num }}">
+          <p class="mt-8">Irregularity score: <strong style="font-family:var(--font-mono);">{{ page.ela_score }} / 100</strong></p>
+          {% else %}
+          <p class="link-muted">Not available for this page.</p>
+          {% endif %}
+        </div>
+        <div>
+          <p style="font-size:13px;">Copy-Move Detection</p>
+          {% if page.cm_suspicious %}
+          <img src="{{ page.cm_url }}" class="img-preview" alt="Copy-move page {{ page.page_num }}">
+          <p class="mt-8" style="color:var(--danger);">⚠ Duplicated region detected ({{ page.cm_cluster_size }} matched points)</p>
+          {% else %}
+          <p class="link-muted">No duplicated regions detected on this page.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- EXTRACTED TEXT -->
+  <div class="analysis-panel" id="panel-text">
+    <div class="card">
+      <div class="section-title">Extracted Text</div>
+      {% if result.ocr_text %}
+      <p style="white-space:pre-wrap; font-size:13.5px; color:var(--text); line-height:1.7; max-height:400px; overflow-y:auto;">{{ result.ocr_text }}</p>
+      {% else %}
+      <p class="link-muted">No text could be extracted from this document{% if not result.tesseract_available %} (OCR is unavailable on this server){% endif %}.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- REPORT -->
+  <div class="analysis-panel" id="panel-report">
+    <div class="card text-center" style="padding:48px;">
+      <div style="font-size:40px;">📄</div>
+      <h3 class="mt-16">Complete Forensic Report</h3>
+      <p>Download a full PDF report including metadata forensics, all findings, ELA/copy-move visualizations, and extracted text.</p>
+      <a href="/report/{{ result.detection_id }}/download/" class="btn btn-primary mt-16">⬇ Download PDF Report</a>
+    </div>
+  </div>
+
+  <script>
+    function showAnalysisTab(name) {
+      document.querySelectorAll('.analysis-panel').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.analysis-tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById('panel-' + name).classList.add('active');
+      event.currentTarget.classList.add('active');
+    }
+  </script>
+
+  {% include "partials/result_chatbot_widget.html" %}
+  <script src="{% static 'js/result_chatbot.js' %}"></script>
+  <script src="{% static 'js/voice_assistant.js' %}"></script>
+  <script>
+    function speakDocumentResult() {
+      if (window.speakAnalysisResult) {
+        window.speakAnalysisResult({
+          verdict: "{{ result.verdict|escapejs }}",
+          confidence: null,
+          model: "Document Forensic & OCR Inspector",
+          summary: "Document risk tier is {{ result.risk_tier }}. {{ result.page_count }} page(s) analyzed with {{ result.risk_points }} risk points."
+        });
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      speakDocumentResult();
+      initResultChatbot({
+        context: {
+          mediaType: "document",
+          verdict: "{{ result.risk_tier }}",
+          verdictLabel: "{{ result.verdict|escapejs }}",
+          confidence: null,
+          modelName: null,
+          filename: "{{ result.filename|escapejs }}",
+          extraFacts: [
+            { label: "Risk Points", value: "{{ result.risk_points }}" },
+          ],
+          flags: [
+            {% for flag in result.flags %}"{{ flag|escapejs }}",{% endfor %}
+          ],
+        },
+        elements: {
+          toggleBtn: document.getElementById('chatbot-toggle'),
+          panel: document.getElementById('chatbot-panel'),
+          messagesEl: document.getElementById('chatbot-messages'),
+          input: document.getElementById('chatbot-input'),
+          sendBtn: document.getElementById('chatbot-send'),
+          closeBtn: document.getElementById('chatbot-close'),
+        },
+      });
+    });
+  </script>
+
+  {% endif %}
+</div>
+{% endblock %}

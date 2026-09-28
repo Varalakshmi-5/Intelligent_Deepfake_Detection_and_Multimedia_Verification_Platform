@@ -1,0 +1,29 @@
+{% extends "app_base.html" %}
+{% block title %}Support Chats · VeriScan AI{% endblock %}
+{% block app_content %}
+<h1 class="mb-24">Support Chats</h1>
+
+{% if threads %}
+<div class="card-flat" style="overflow-x:auto;">
+  <table class="data-table">
+    <thead>
+      <tr><th>User</th><th>Last Activity</th><th>Unread</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for u in threads %}
+      <tr>
+        <td>{{ u.name }}<br><span class="link-muted" style="font-size:11.5px;">{{ u.email }}</span></td>
+        <td>{{ u.last_message_at|date:"M d, Y H:i" }}</td>
+        <td>{% if u.unread_count %}<span class="pill pill-fake">{{ u.unread_count }} new</span>{% else %}<span class="link-muted">—</span>{% endif %}</td>
+        <td><a href="{% url 'support:admin_thread_detail' u.id %}" class="btn btn-outline btn-sm">Open Chat</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">
+  <p>No support conversations yet.</p>
+</div>
+{% endif %}
+{% endblock %}

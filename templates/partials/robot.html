@@ -1,0 +1,59 @@
+<svg class="robot-wrap" viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#3ee6d0" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#3ee6d0" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="bodyGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a2530"/>
+      <stop offset="100%" stop-color="#0f151d"/>
+    </linearGradient>
+  </defs>
+
+  <circle cx="110" cy="100" r="95" fill="url(#glow)"/>
+
+  <!-- antenna -->
+  <line x1="110" y1="28" x2="110" y2="12" stroke="#3ee6d0" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="110" cy="9" r="5" fill="#3ee6d0">
+    <animate attributeName="opacity" values="1;0.4;1" dur="1.6s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- head -->
+  <rect x="62" y="30" width="96" height="72" rx="20" fill="url(#bodyGrad)" stroke="#3ee6d0" stroke-width="2"/>
+
+  <!-- eyes -->
+  <g>
+    <rect x="82" y="58" width="20" height="14" rx="7" fill="#3ee6d0">
+      <animate attributeName="height" values="14;2;14" dur="4s" begin="1s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="118" y="58" width="20" height="14" rx="7" fill="#3ee6d0">
+      <animate attributeName="height" values="14;2;14" dur="4s" begin="1s" repeatCount="indefinite"/>
+    </rect>
+  </g>
+
+  <!-- smile -->
+  <path d="M90 82 Q110 92 130 82" stroke="#7c8cff" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+  <!-- body -->
+  <rect x="55" y="110" width="110" height="80" rx="18" fill="url(#bodyGrad)" stroke="#223040" stroke-width="2"/>
+
+  <!-- scanning face indicator on chest -->
+  <rect x="80" y="128" width="60" height="42" rx="8" fill="#0a0e14" stroke="#223040"/>
+  <circle cx="98" cy="149" r="9" fill="none" stroke="#3ee6d0" stroke-width="2"/>
+  <circle cx="122" cy="149" r="9" fill="none" stroke="#3ee6d0" stroke-width="2"/>
+  <line x1="80" y1="132" x2="140" y2="132" stroke="#3ee6d0" stroke-width="2" opacity="0.8">
+    <animate attributeName="y1" values="132;166;132" dur="2.4s" repeatCount="indefinite"/>
+    <animate attributeName="y2" values="132;166;132" dur="2.4s" repeatCount="indefinite"/>
+  </line>
+
+  <!-- arms -->
+  <circle cx="48" cy="140" r="9" fill="#1a2530" stroke="#3ee6d0" stroke-width="2"/>
+  <circle cx="172" cy="140" r="9" fill="#1a2530" stroke="#3ee6d0" stroke-width="2"/>
+
+  <!-- waving arm -->
+  <g>
+    <line x1="172" y1="140" x2="192" y2="118" stroke="#3ee6d0" stroke-width="4" stroke-linecap="round">
+      <animateTransform attributeName="transform" type="rotate" values="0 172 140;18 172 140;0 172 140" dur="1.4s" repeatCount="indefinite"/>
+    </line>
+  </g>
+</svg>

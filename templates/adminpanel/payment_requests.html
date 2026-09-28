@@ -1,0 +1,60 @@
+{% extends "app_base.html" %}
+{% block title %}Payment Requests · VeriScan AI{% endblock %}
+{% block app_content %}
+<h1 class="mb-24">Payment Requests {% if pending_count %}<span class="badge badge-soon" style="font-size:13px; vertical-align:middle;">{{ pending_count }} pending</span>{% endif %}</h1>
+
+<form method="get" class="toolbar">
+  <select name="status" onchange="this.form.submit()">
+    <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending Review</option>
+    <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
+    <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+    <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All</option>
+  </select>
+</form>
+
+<div class="card-flat" style="overflow-x:auto;">
+  <table class="data-table">
+    <thead>
+      <tr><th>User</th><th>UTR Reference</th><th>Amount</th><th>Screenshot</th><th>Status</th><th>Submitted</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for p in payment_requests %}
+      <tr>
+        <td>{{ p.user.name }}<br><span class="link-muted" style="font-size:11.5px;">{{ p.user.email }}</span></td>
+        <td style="font-family:var(--font-mono); font-size:12px;">{{ p.utr_reference }}</td>
+        <td>{{ p.amount_display }}</td>
+        <td>
+          {% if p.screenshot %}
+          <a href="{{ p.screenshot.url }}" target="_blank" class="btn btn-outline btn-sm">View</a>
+          {% else %}—{% endif %}
+        </td>
+        <td>
+          {% if p.status == 'approved' %}<span class="pill pill-real">Approved</span>
+          {% elif p.status == 'rejected' %}<span class="pill pill-fake">Rejected</span>
+          {% else %}<span class="pill pill-unverified">Pending</span>{% endif %}
+        </td>
+        <td>{{ p.submitted_at|date:"M d, Y H:i" }}</td>
+        <td>
+          {% if p.status == 'pending' %}
+          <div class="flex gap-8">
+            <form method="post" action="{% url 'adminpanel:approve_payment_request' p.id %}">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-primary btn-sm">✓ Approve</button>
+            </form>
+            <form method="post" action="{% url 'adminpanel:reject_payment_request' p.id %}" onsubmit="return confirm('Reject this payment request?');">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-danger btn-sm">✗ Reject</button>
+            </form>
+          </div>
+          {% else %}
+          <span class="link-muted" style="font-size:12px;">{% if p.reviewed_by %}by {{ p.reviewed_by.name }}{% endif %}{% if p.reviewed_at %} · {{ p.reviewed_at|date:"M d, H:i" }}{% endif %}</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" class="text-center link-muted">No payment requests found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

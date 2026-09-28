@@ -1,0 +1,259 @@
+{% extends "app_base.html" %}
+{% load static %}
+{% block title %}Home · VeriScan AI{% endblock %}
+{% block app_content %}
+
+<div class="hero" style="padding-top:8px;">
+  <div style="width:110px;margin:0 auto;">{% include "partials/robot.html" %}</div>
+  <h1 class="mt-16">Hi {{ user.name }}, welcome back 👋</h1>
+  <p style="font-size: 16px; color: #cbd5e1; max-width: 680px; margin: 8px auto 0 auto;">Choose how you would like to proceed with your forensic verification today:</p>
+</div>
+
+<!-- 3 Main Mode Selection Cards -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin: 28px 0;">
+
+  <!-- Card 1: If User Knows Media Type -->
+  <div class="card" style="background: linear-gradient(135deg, #1e293b, #0f172a); border: 2px solid #3b82f6; border-radius: 16px; padding: 24px; position: relative; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
+    <div style="font-size: 38px; margin-bottom: 12px;">🎯</div>
+    <span style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; text-transform: uppercase;">Known Media Type</span>
+    <h3 style="font-size: 20px; font-weight: 800; color: #f8fafc; margin: 10px 0 6px 0;">Specific Media Verification</h3>
+    <p style="color: #94a3b8; font-size: 13px; margin-bottom: 16px; line-height: 1.5;">
+      If you already know your file type, choose directly from our dedicated forensic analyzers:
+    </p>
+    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;">
+      <a href="{% url 'detection:analyze_image' %}" style="background: rgba(255,255,255,0.06); color: #f8fafc; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; text-decoration: none; border: 1px solid rgba(255,255,255,0.1);">🖼️ Image</a>
+      <a href="{% url 'detection:analyze_video' %}" style="background: rgba(255,255,255,0.06); color: #f8fafc; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; text-decoration: none; border: 1px solid rgba(255,255,255,0.1);">🎥 Video</a>
+      <a href="{% url 'detection:analyze_audio' %}" style="background: rgba(255,255,255,0.06); color: #f8fafc; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; text-decoration: none; border: 1px solid rgba(255,255,255,0.1);">🎵 Audio</a>
+      <a href="{% url 'detection:analyze_document' %}" style="background: rgba(255,255,255,0.06); color: #f8fafc; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; text-decoration: none; border: 1px solid rgba(255,255,255,0.1);">📄 Document</a>
+      <a href="{% url 'detection:analyze_text' %}" style="background: rgba(255,255,255,0.06); color: #f8fafc; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; text-decoration: none; border: 1px solid rgba(255,255,255,0.1);">📝 Text</a>
+      <a href="{% url 'detection:analyze_link' %}" style="background: rgba(255,255,255,0.06); color: #f8fafc; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; text-decoration: none; border: 1px solid rgba(255,255,255,0.1);">🔗 Link Safety</a>
+      <a href="{% url 'detection:batch_analyze' %}" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; text-decoration: none;">📁 Batch Multi-Upload</a>
+    </div>
+
+  </div>
+
+  <!-- Card 2: If User Doesn't Know Media Type (Agentic AI) -->
+  <div class="card" style="background: linear-gradient(135deg, #064e3b, #0f172a); border: 2px solid #10b981; border-radius: 16px; padding: 24px; position: relative; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
+    <div style="font-size: 38px; margin-bottom: 12px;">🤖</div>
+    <span style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; text-transform: uppercase;">Unknown Media Type</span>
+    <h3 style="font-size: 20px; font-weight: 800; color: #f8fafc; margin: 10px 0 6px 0;">Agentic AI Co-Pilot</h3>
+    <p style="color: #94a3b8; font-size: 13px; margin-bottom: 20px; line-height: 1.5;">
+      Don't know the exact format? Simply drop any file or type a prompt. The autonomous agent auto-detects the format and dispatches all multi-tool forensics.
+    </p>
+    <a href="{% url 'detection:agentic_assistant' %}" class="btn btn-primary" style="display: block; text-align: center; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; font-weight: 700; padding: 12px; border-radius: 10px; text-decoration: none; box-shadow: 0 4px 14px rgba(16,185,129,0.4);">
+      Launch Agentic AI Co-Pilot 🤖 →
+    </a>
+  </div>
+
+  <!-- Card 3: AI Interview Proctor -->
+  <div class="card" style="background: linear-gradient(135deg, #311b92, #0f172a); border: 2px solid #6366f1; border-radius: 16px; padding: 24px; position: relative; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
+    <div style="font-size: 38px; margin-bottom: 12px;">🎥</div>
+    <span style="background: rgba(99, 102, 241, 0.2); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.4); padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; text-transform: uppercase;">Live Verification</span>
+    <h3 style="font-size: 20px; font-weight: 800; color: #f8fafc; margin: 10px 0 6px 0;">AI Interview Proctor</h3>
+    <p style="color: #94a3b8; font-size: 13px; margin-bottom: 20px; line-height: 1.5;">
+      Real-time camera & audio proctoring with COCO-SSD object detection, gaze tracking, whisper meter, and automated PDF certification.
+    </p>
+    <a href="{% url 'detection:analyze_proctoring' %}" class="btn btn-primary" style="display: block; text-align: center; background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; border: none; font-weight: 700; padding: 12px; border-radius: 10px; text-decoration: none; box-shadow: 0 4px 14px rgba(99,102,241,0.4);">
+      Start Live AI Proctoring 🎥 →
+    </a>
+  </div>
+
+</div>
+
+
+{% if not user.is_admin %}
+<div class="voice-assistant-card">
+  <button id="veribot-mic-btn" class="mic-btn" aria-label="Talk to VeriBot">🎤</button>
+  <div id="veribot-status" class="voice-status">Tap the mic and tell me where you'd like to go — try saying "Agentic AI", "Interview Proctor", or "Image".</div>
+  <div id="veribot-transcript" class="voice-transcript"></div>
+</div>
+{% endif %}
+
+
+{% if not user.is_admin %}
+<div class="card mt-24" style="max-width:560px; margin-left:auto; margin-right:auto;">
+  {% if user.has_paid_access %}
+  <div class="flex items-center gap-12">
+    <span style="font-size:22px;">✅</span>
+    <div>
+      <strong>Unlimited access active</strong>
+      <div class="link-muted" style="font-size:13px;">Valid until {{ user.paid_access_until|date:"M d, Y H:i" }}</div>
+    </div>
+  </div>
+  {% else %}
+  <div class="flex items-center justify-between">
+    <div class="flex items-center gap-12">
+      <span style="font-size:22px;">{% if user.free_detections_remaining > 0 %}🎁{% else %}🔒{% endif %}</span>
+      <div>
+        <strong>{{ user.free_detections_remaining }} free detection{{ user.free_detections_remaining|pluralize }} remaining</strong>
+        <div class="link-muted" style="font-size:13px;">{% if user.free_detections_remaining == 0 %}Unlock 7 days of unlimited access for ₹100{% else %}Out of {{ user.free_detections_used|add:user.free_detections_remaining }} total free detections{% endif %}</div>
+      </div>
+    </div>
+    {% if user.free_detections_remaining == 0 %}
+    <a href="{% url 'billing:pay' %}" class="btn btn-primary btn-sm">Unlock Access</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="stat-grid mt-32">
+  <div class="stat-card">
+    <div class="num">{{ total_count }}</div>
+    <div class="label">Total Verifications</div>
+  </div>
+  <div class="stat-card">
+    <div class="num" style="color:var(--success);">{{ real_count }}</div>
+    <div class="label">Real</div>
+  </div>
+  <div class="stat-card">
+    <div class="num" style="color:var(--danger);">{{ fake_count }}</div>
+    <div class="label">Fake</div>
+  </div>
+  <a href="{% url 'detection:analyze_image' %}" class="stat-card" style="display:flex; flex-direction:column; justify-content:center; text-decoration:none;">
+    <div style="font-size:22px;">🖼️ →</div>
+    <div class="label mt-8">Verify an Image</div>
+  </a>
+</div>
+
+<!-- User Analytics Charts -->
+<div class="two-col mt-24">
+  <div class="card">
+    <div class="section-title mb-16">My Verification Outcomes</div>
+    <div style="height: 220px; position: relative;">
+      <canvas id="userOutcomesChart"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title mb-16">My Verifications by Media Type</div>
+    <div style="height: 220px; position: relative;">
+      <canvas id="userMediaChart"></canvas>
+    </div>
+  </div>
+</div>
+
+
+<div class="card mt-24">
+  <div class="flex justify-between items-center mb-16">
+    <div class="section-title" style="margin-bottom:0;">Recent Activity</div>
+    {% if recent %}<a href="{% url 'detection:history' %}" class="link-muted" style="font-size:13px;">View all →</a>{% endif %}
+  </div>
+
+  {% if recent %}
+  <table class="data-table">
+    <thead>
+      <tr><th>Media</th><th>Filename</th><th>Result</th><th>Confidence</th><th>Date</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for d in recent %}
+      <tr>
+        <td>{{ d.get_media_type_display }}</td>
+        <td>{{ d.original_filename }}</td>
+        <td><span class="pill {% if d.result == 'REAL' %}pill-real{% else %}pill-fake{% endif %}">{{ d.result }}</span></td>
+        <td>{{ d.confidence }}%</td>
+        <td>{{ d.created_at|date:"M d, H:i" }}</td>
+        <td>{% if d.report_filename %}<a href="{% url 'detection:download_report' d.id %}" class="btn btn-outline btn-sm">Report</a>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">
+    <p>You haven't verified anything yet.</p>
+    <a href="{% url 'detection:analyze_image' %}" class="btn btn-primary mt-16">Verify Your First Image</a>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // User Outcomes Doughnut Chart
+    const ctxUserOutcomes = document.getElementById('userOutcomesChart');
+    if (ctxUserOutcomes) {
+      new Chart(ctxUserOutcomes.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Real', 'Fake', 'Unverified'],
+          datasets: [{
+            data: [{{ real_count }}, {{ fake_count }}, {{ unverified_count }}],
+            backgroundColor: ['#10b981', '#ef4444', '#9ca3af'],
+            borderWidth: 2,
+            borderColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom' }
+          }
+        }
+      });
+    }
+
+    // User Media Bar Chart
+    const ctxUserMedia = document.getElementById('userMediaChart');
+    if (ctxUserMedia) {
+      new Chart(ctxUserMedia.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: {{ user_media_labels|safe }},
+          datasets: [{
+            label: 'Verifications',
+            data: {{ user_media_data|safe }},
+            backgroundColor: '#3b82f6',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: { beginAtZero: true, ticks: { precision: 0 } }
+          }
+        }
+      });
+    }
+  });
+</script>
+
+{% if not user.is_admin %}
+<script src="{% static 'js/voice_assistant.js' %}?v=3"></script>
+<script>
+
+
+  document.addEventListener('DOMContentLoaded', function () {
+    initVeriBotVoiceAssistant({
+      userName: "{{ user.name|escapejs }}",
+      routes: {
+        agent: "{% url 'detection:agentic_assistant' %}",
+        proctor: "{% url 'detection:analyze_proctoring' %}",
+        image: "{% url 'detection:analyze_image' %}",
+        video: "{% url 'detection:analyze_video' %}",
+        audio: "{% url 'detection:analyze_audio' %}",
+        text: "{% url 'detection:analyze_text' %}",
+        document: "{% url 'detection:analyze_document' %}",
+        link: "{% url 'detection:analyze_link' %}",
+        compare: "{% url 'detection:compare_files' %}",
+        history: "{% url 'detection:history' %}",
+        home: "{% url 'detection:dashboard' %}"
+      },
+
+      elements: {
+        micBtn: document.getElementById('veribot-mic-btn'),
+        statusText: document.getElementById('veribot-status'),
+        transcriptText: document.getElementById('veribot-transcript'),
+      }
+    });
+  });
+</script>
+{% endif %}
+{% endblock %}
+

@@ -1,0 +1,61 @@
+{% extends "app_base.html" %}
+{% block title %}All Detections · VeriScan AI{% endblock %}
+{% block app_content %}
+  <h1 class="mb-24">All Detections</h1>
+
+  <form method="get" class="toolbar">
+    <input type="text" name="q" value="{{ query }}" placeholder="Search filename or user email...">
+    <select name="media">
+      <option value="">All media types</option>
+      <option value="image" {% if media_filter == 'image' %}selected{% endif %}>Image</option>
+      <option value="video" {% if media_filter == 'video' %}selected{% endif %}>Video</option>
+      <option value="audio" {% if media_filter == 'audio' %}selected{% endif %}>Audio</option>
+      <option value="text" {% if media_filter == 'text' %}selected{% endif %}>Text</option>
+      <option value="document" {% if media_filter == 'document' %}selected{% endif %}>Document</option>
+      <option value="link" {% if media_filter == 'link' %}selected{% endif %}>Link</option>
+      <option value="compare" {% if media_filter == 'compare' %}selected{% endif %}>File Comparison</option>
+      <option value="proctor" {% if media_filter == 'proctor' %}selected{% endif %}>AI Interview Proctoring</option>
+      <option value="crawler" {% if media_filter == 'crawler' %}selected{% endif %}>Web & Media Monitor</option>
+      <option value="jobs" {% if media_filter == 'jobs' %}selected{% endif %}>Job Role Authenticator</option>
+      <option value="recruiter" {% if media_filter == 'recruiter' %}selected{% endif %}>Recruiter Identity Authenticator</option>
+    </select>
+    <select name="result">
+      <option value="">All results</option>
+      <option value="REAL" {% if result_filter == 'REAL' %}selected{% endif %}>Real</option>
+      <option value="FAKE" {% if result_filter == 'FAKE' %}selected{% endif %}>Fake</option>
+    </select>
+    <button type="submit" class="btn btn-outline btn-sm">Filter</button>
+  </form>
+
+  <div class="card-flat" style="overflow-x:auto;">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>User</th><th>Media</th><th>Filename</th><th>Result</th><th>Confidence</th><th>Date</th><th>Report</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in detections %}
+        <tr>
+          <td>{{ d.user.name }}<br><span class="link-muted" style="font-size:11.5px;">{{ d.user.email }}</span></td>
+          <td style="text-transform:capitalize;">{{ d.media_type }}</td>
+          <td>{{ d.original_filename }}</td>
+          <td><span class="pill {% if d.result == 'REAL' %}pill-real{% else %}pill-fake{% endif %}">{{ d.result }}</span></td>
+          <td>{{ d.confidence }}%</td>
+          <td>{{ d.created_at|date:"M d, Y H:i" }}</td>
+          <td>
+            {% if d.report_filename %}
+            <a href="{% url 'adminpanel:download_report' d.id %}" class="btn btn-outline btn-sm">Report</a>
+            {% else %}—{% endif %}
+            {% if d.is_verified_authentic %}
+            <a href="{% url 'detection:download_certificate' d.id %}" class="btn btn-outline btn-sm">🎖 Certificate</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="text-center link-muted">No detections found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

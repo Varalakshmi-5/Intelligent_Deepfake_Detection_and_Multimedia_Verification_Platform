@@ -1,0 +1,167 @@
+{% extends "app_base.html" %}
+{% load static %}
+
+{% block title %}Live Scam & Fraud Threat Analytics Dashboard - VeriScan AI{% endblock %}
+
+{% block app_content %}
+<div class="page-container" style="max-width: 1200px; margin: 0 auto; padding: 24px;">
+
+  <!-- Header Banner -->
+  <div style="background: linear-gradient(135deg, #0f172a, #1e1b4b); border: 1px solid rgba(99, 102, 241, 0.3); padding: 24px; border-radius: 16px; margin-bottom: 24px;">
+    <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(99, 102, 241, 0.2); color: #a5b4fc; border: 1px solid rgba(99, 102, 241, 0.4); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; margin-bottom: 8px;">
+      📊 REAL-TIME SECURITY THREAT INTELLIGENCE
+    </div>
+    <h1 style="font-size: 28px; font-weight: 800; color: #f8fafc; margin: 0;">
+      Scam & Deepfake Threat Analytics Dashboard
+    </h1>
+    <p style="color: #94a3b8; font-size: 14px; margin-top: 6px; max-width: 720px;">
+      Aggregated platform analytics tracking real-time deepfake media scans, job posting authenticity, recruiter identity risk scores, and high-risk domain threats.
+    </p>
+  </div>
+
+  <!-- Top Metrics Overview -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 28px;">
+    <div class="card" style="background: #1e293b; border: 1px solid #334155; padding: 20px; border-radius: 14px;">
+      <div style="font-size: 32px; margin-bottom: 8px;">🛡️</div>
+      <div style="color: #94a3b8; font-size: 13px; font-weight: 600;">Total Audits Run</div>
+      <div style="font-size: 28px; font-weight: 800; color: #f8fafc; margin-top: 4px;">{{ total_audits_run }}</div>
+    </div>
+
+    <div class="card" style="background: #1e293b; border: 1px solid rgba(239, 68, 68, 0.4); padding: 20px; border-radius: 14px;">
+      <div style="font-size: 32px; margin-bottom: 8px;">🚨</div>
+      <div style="color: #f87171; font-size: 13px; font-weight: 600;">Total Fraud Threats Blocked</div>
+      <div style="font-size: 28px; font-weight: 800; color: #ef4444; margin-top: 4px;">{{ total_fraud_blocked }}</div>
+    </div>
+
+    <div class="card" style="background: #1e293b; border: 1px solid rgba(16, 185, 129, 0.4); padding: 20px; border-radius: 14px;">
+      <div style="font-size: 32px; margin-bottom: 8px;">💼</div>
+      <div style="color: #34d399; font-size: 13px; font-weight: 600;">Verified Real Job Offers</div>
+      <div style="font-size: 28px; font-weight: 800; color: #10b981; margin-top: 4px;">{{ real_jobs_count }}</div>
+    </div>
+
+    <div class="card" style="background: #1e293b; border: 1px solid rgba(59, 130, 246, 0.4); padding: 20px; border-radius: 14px;">
+      <div style="font-size: 32px; margin-bottom: 8px;">👤</div>
+      <div style="color: #60a5fa; font-size: 13px; font-weight: 600;">Verified Recruiter Profiles</div>
+      <div style="font-size: 28px; font-weight: 800; color: #3b82f6; margin-top: 4px;">{{ legit_recruiters_count }}</div>
+    </div>
+  </div>
+
+  <!-- Chart Visualizations -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 20px; margin-bottom: 28px;">
+    <div class="card" style="background: #1e293b; border: 1px solid #334155; padding: 20px; border-radius: 16px;">
+      <h3 style="font-size: 16px; font-weight: 700; color: #f8fafc; margin-bottom: 16px;">
+        🎥 Deepfake Media Analysis Breakdown
+      </h3>
+      <canvas id="mediaChart" height="220"></canvas>
+    </div>
+
+    <div class="card" style="background: #1e293b; border: 1px solid #334155; padding: 20px; border-radius: 16px;">
+      <h3 style="font-size: 16px; font-weight: 700; color: #f8fafc; margin-bottom: 16px;">
+        💼 Job Role & Recruiter Fraud Distribution
+      </h3>
+      <canvas id="fraudChart" height="220"></canvas>
+    </div>
+  </div>
+
+  <!-- Recent Threats Log Table -->
+  <div class="card" style="background: #1e293b; border: 1px solid #334155; padding: 20px; border-radius: 16px;">
+    <h3 style="font-size: 18px; font-weight: 700; color: #f8fafc; margin-bottom: 14px;">
+      📜 Recent Flagged Phishing & Fraud Entries
+    </h3>
+    <div style="overflow-x: auto;">
+      <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+        <thead>
+          <tr style="border-bottom: 1px solid #334155; color: #94a3b8;">
+            <th style="padding: 10px;">Category</th>
+            <th style="padding: 10px;">Target / Title / Recruiter</th>
+            <th style="padding: 10px;">Source / Domain</th>
+            <th style="padding: 10px;">Status</th>
+          </tr>
+        </thead>
+        <tbody style="color: #cbd5e1;">
+          {% for job in recent_jobs %}
+          {% if job.status == 'FAKE' %}
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <td style="padding: 10px;"><span style="background: rgba(239,68,68,0.15); color: #f87171; padding: 3px 8px; border-radius: 4px; font-size: 11px;">Job Scam</span></td>
+            <td style="padding: 10px; font-weight: 600;">{{ job.job_title }}</td>
+            <td style="padding: 10px;">{{ job.company_domain }}</td>
+            <td style="padding: 10px;"><span style="color: #f87171;">🚫 BLOCKED</span></td>
+          </tr>
+          {% endif %}
+          {% endfor %}
+
+          {% for rec in recent_recruiters %}
+          {% if rec.authenticity_status != 'LEGITIMATE' %}
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <td style="padding: 10px;"><span style="background: rgba(239,68,68,0.15); color: #f87171; padding: 3px 8px; border-radius: 4px; font-size: 11px;">Recruiter Phishing</span></td>
+            <td style="padding: 10px; font-weight: 600;">{{ rec.recruiter_name }} ({{ rec.claimed_company }})</td>
+            <td style="padding: 10px;">{{ rec.email_domain }}</td>
+            <td style="padding: 10px;"><span style="color: #f87171;">🚨 SYNTHETIC</span></td>
+          </tr>
+          {% endif %}
+          {% endfor %}
+
+          {% for det in recent_detections %}
+          {% if det.result == 'FAKE' %}
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <td style="padding: 10px;"><span style="background: rgba(239,68,68,0.15); color: #f87171; padding: 3px 8px; border-radius: 4px; font-size: 11px;">Media Deepfake</span></td>
+            <td style="padding: 10px; font-weight: 600;">{{ det.original_filename }}</td>
+            <td style="padding: 10px;">{{ det.media_type|upper }} Scan</td>
+            <td style="padding: 10px;"><span style="color: #f87171;">⚠️ FAKE DETECTED</span></td>
+          </tr>
+          {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    // 1. Media Chart
+    const ctxMedia = document.getElementById('mediaChart').getContext('2d');
+    new Chart(ctxMedia, {
+      type: 'doughnut',
+      data: {
+        labels: ['Authentic Real Media', 'Deepfake / Manipulated'],
+        datasets: [{
+          data: [{{ real_media_count|default:1 }}, {{ fake_media_count|default:1 }}],
+          backgroundColor: ['#10b981', '#ef4444'],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: '#cbd5e1' } } }
+      }
+    });
+
+    // 2. Fraud Chart
+    const ctxFraud = document.getElementById('fraudChart').getContext('2d');
+    new Chart(ctxFraud, {
+      type: 'bar',
+      data: {
+        labels: ['Legit Jobs', 'Fake Jobs', 'Legit Recruiters', 'Synthetic Recruiters'],
+        datasets: [{
+          label: 'Security Audit Volume',
+          data: [{{ real_jobs_count|default:0 }}, {{ fake_jobs_count|default:0 }}, {{ legit_recruiters_count|default:0 }}, {{ suspicious_recruiters_count|default:0 }}],
+          backgroundColor: ['#10b981', '#ef4444', '#3b82f6', '#f59e0b'],
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+        },
+        plugins: { legend: { display: false } }
+      }
+    });
+  });
+</script>
+{% endblock %}
+

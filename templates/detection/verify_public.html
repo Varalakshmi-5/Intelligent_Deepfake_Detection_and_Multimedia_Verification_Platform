@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Verify Certificate · VeriScan AI{% endblock %}
+{% block content %}
+<div class="container" style="max-width:640px; padding-top:48px; padding-bottom:48px;">
+
+  <div class="text-center mb-24">
+    <div style="width:90px;margin:0 auto;">{% include "partials/robot.html" %}</div>
+    <h1 class="mt-16">Certificate Verification</h1>
+    <p>This is an independent, public verification record from VeriScan AI.</p>
+  </div>
+
+  <div class="verdict-banner {% if detection.result == 'REAL' %}real{% else %}fake{% endif %}">
+    <div>
+      <h2>{% if detection.result == 'REAL' %}✅ Verified Authentic{% else %}⚠️ Not Verified Authentic{% endif %}</h2>
+      <p style="color:inherit; opacity:0.8;">{{ detection.get_media_type_display }} · analyzed {{ detection.created_at|date:"M d, Y H:i" }} UTC</p>
+    </div>
+    <div class="text-center">
+      <div class="confidence-num">{{ detection.confidence }}%</div>
+      <div style="font-size:12px; opacity:0.75;">confidence</div>
+    </div>
+  </div>
+
+  <div class="card mt-24">
+    <div class="section-title">Certificate Details</div>
+    <table class="kv-table">
+      <tr><td>Media Type</td><td>{{ detection.get_media_type_display }}</td></tr>
+      <tr><td>SHA-256 Hash</td><td style="word-break:break-all;">{{ detection.file_hash|default:"—" }}</td></tr>
+      <tr><td>Analyzed At</td><td>{{ detection.created_at|date:"M d, Y H:i" }} UTC</td></tr>
+      <tr><td>Certificate ID</td><td style="word-break:break-all;">{{ detection.public_id }}</td></tr>
+    </table>
+  </div>
+
+  <p class="link-muted text-center mt-24" style="font-size:12.5px;">
+    This record confirms that a file matching the hash above was analyzed by VeriScan AI's automated
+    detection pipeline at the time shown. It reflects an automated analysis, not a legal guarantee of
+    authenticity. No uploader information is shown on this page.
+  </p>
+
+  <div class="text-center mt-24">
+    <a href="{% url 'accounts:landing' %}" class="btn btn-outline">Go to VeriScan AI →</a>
+  </div>
+
+</div>
+{% endblock %}

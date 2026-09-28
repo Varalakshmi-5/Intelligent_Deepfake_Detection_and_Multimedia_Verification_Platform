@@ -1,0 +1,123 @@
+{% load static %}
+<aside class="sidebar">
+  {% if user.is_admin %}
+    <div class="sidebar-section-label">Admin</div>
+    <a href="{% url 'adminpanel:dashboard' %}" class="sidebar-link {% if active_nav == 'admin_dashboard' %}active{% endif %}">
+      <span class="sidebar-icon">🏠</span> Dashboard
+    </a>
+    <a href="{% url 'adminpanel:manage_users' %}" class="sidebar-link {% if active_nav == 'admin_users' %}active{% endif %}">
+      <span class="sidebar-icon">👥</span> Manage Users
+    </a>
+    <a href="{% url 'adminpanel:all_detections' %}" class="sidebar-link {% if active_nav == 'admin_detections' %}active{% endif %}">
+      <span class="sidebar-icon">📊</span> All Detections
+    </a>
+    <a href="{% url 'adminpanel:payment_requests' %}" class="sidebar-link {% if active_nav == 'admin_payments' %}active{% endif %}">
+      <span class="sidebar-icon">💳</span> Payment Requests
+    </a>
+    <a href="{% url 'support:admin_thread_list' %}" class="sidebar-link {% if active_nav == 'admin_support' %}active{% endif %}">
+      <span class="sidebar-icon">💬</span> Support Chats
+    </a>
+    <a href="{% url 'adminpanel:all_feedbacks' %}" class="sidebar-link {% if active_nav == 'admin_feedbacks' %}active{% endif %}">
+      <span class="sidebar-icon">⭐</span> User Feedbacks
+    </a>
+    <a href="{% url 'adminpanel:settings' %}" class="sidebar-link {% if active_nav == 'admin_settings' %}active{% endif %}">
+      <span class="sidebar-icon">⚙️</span> Settings
+    </a>
+    <a href="{% url 'adminpanel:audit_logs' %}" class="sidebar-link {% if active_nav == 'admin_audit_logs' %}active{% endif %}">
+      <span class="sidebar-icon">🛡️</span> Audit Logs
+    </a>
+
+  {% else %}
+    <div class="sidebar-section-label">Home</div>
+    <a href="{% url 'detection:dashboard' %}" class="sidebar-link {% if active_nav == 'home' %}active{% endif %}">
+      <span class="sidebar-icon">🏠</span> Home Dashboard
+    </a>
+
+    <div class="sidebar-section-label mt-16">Verification Modes</div>
+    
+    <!-- Mode 1: Specific Media Verification (With collapsible sub-items when active) -->
+    <a href="{% url 'detection:analyze_image' %}" class="sidebar-link {% if active_nav in 'image,video,audio,text,document,link,compare' %}active{% endif %}">
+      <span class="sidebar-icon">🎯</span> Specific Media Verification
+    </a>
+
+    {% if active_nav in 'image,video,audio,text,document,link,compare' %}
+    <div style="padding-left: 14px; border-left: 2px solid #3b82f6; margin: 4px 0 8px 12px; display: flex; flex-direction: column; gap: 2px;">
+      <a href="{% url 'detection:analyze_image' %}" class="sidebar-link nav-image {% if active_nav == 'image' %}active{% endif %}" style="font-size: 13px; padding: 6px 10px;">
+        🖼️ Image
+      </a>
+      <a href="{% url 'detection:analyze_video' %}" class="sidebar-link nav-video {% if active_nav == 'video' %}active{% endif %}" style="font-size: 13px; padding: 6px 10px;">
+        🎥 Video
+      </a>
+      <a href="{% url 'detection:analyze_audio' %}" class="sidebar-link nav-audio {% if active_nav == 'audio' %}active{% endif %}" style="font-size: 13px; padding: 6px 10px;">
+        🎵 Audio
+      </a>
+      <a href="{% url 'detection:analyze_text' %}" class="sidebar-link nav-text {% if active_nav == 'text' %}active{% endif %}" style="font-size: 13px; padding: 6px 10px;">
+        📝 Text
+      </a>
+      <a href="{% url 'detection:analyze_document' %}" class="sidebar-link nav-document {% if active_nav == 'document' %}active{% endif %}" style="font-size: 13px; padding: 6px 10px;">
+        📄 Document
+      </a>
+      <a href="{% url 'detection:analyze_link' %}" class="sidebar-link nav-link {% if active_nav == 'link' %}active{% endif %}" style="font-size: 13px; padding: 6px 10px;">
+        🔗 Link Safety
+      </a>
+      <a href="{% url 'detection:batch_analyze' %}" class="sidebar-link nav-batch {% if active_nav == 'batch' %}active{% endif %}" style="font-size: 13px; padding: 6px 10px;">
+        📁 Batch Upload
+      </a>
+      <a href="{% url 'detection:compare_files' %}" class="sidebar-link nav-compare {% if active_nav == 'compare' %}active{% endif %}" style="font-size: 13px; padding: 6px 10px;">
+        🔍 Compare Files
+      </a>
+    </div>
+
+    {% endif %}
+
+    <!-- Mode 2: Agentic AI Co-Pilot -->
+    <a href="{% url 'detection:agentic_assistant' %}" class="sidebar-link nav-agent {% if active_nav == 'agent' %}active{% endif %}">
+      <span class="sidebar-icon">🤖</span> Agentic AI Co-Pilot
+    </a>
+
+    <!-- Mode 3: Real-Time Web & Media Monitor -->
+    <a href="{% url 'detection:web_crawler' %}" class="sidebar-link nav-crawler {% if active_nav == 'crawler' %}active{% endif %}">
+      <span class="sidebar-icon">🌐</span> Web Media Monitor
+    </a>
+
+    <!-- Mode 4: AI Job Role Authenticator -->
+    <a href="{% url 'detection:job_verifier' %}" class="sidebar-link nav-jobs {% if active_nav == 'jobs' %}active{% endif %}">
+      <span class="sidebar-icon">💼</span> Job Authenticator
+    </a>
+
+    <!-- Mode 5: Recruiter Identity Authenticator -->
+    <a href="{% url 'detection:recruiter_verifier' %}" class="sidebar-link nav-recruiter {% if active_nav == 'recruiter' %}active{% endif %}">
+      <span class="sidebar-icon">🕵️‍♂️</span> Recruiter Authenticator
+    </a>
+
+    <!-- Mode 6: AI Interview Proctor -->
+    <a href="{% url 'detection:analyze_proctoring' %}" class="sidebar-link nav-proctor {% if active_nav == 'proctor' %}active{% endif %}">
+      <span class="sidebar-icon">🎥</span> AI Interview Proctor
+    </a>
+
+    <!-- Mode 7: Live Scam & Threat Analytics Dashboard -->
+    <a href="{% url 'detection:threat_analytics' %}" class="sidebar-link nav-analytics {% if active_nav == 'analytics' %}active{% endif %}">
+      <span class="sidebar-icon">📊</span> Threat Analytics Dashboard
+    </a>
+
+
+
+    <div class="sidebar-divider"></div>
+
+
+
+    <a href="{% url 'detection:history' %}" class="sidebar-link {% if active_nav == 'history' %}active{% endif %}">
+      <span class="sidebar-icon">📁</span> My Reports
+    </a>
+    <a href="{% url 'billing:history' %}" class="sidebar-link {% if active_nav == 'billing' %}active{% endif %}">
+      <span class="sidebar-icon">💳</span> Payment History
+    </a>
+    <a href="{% url 'support:my_thread' %}" class="sidebar-link {% if active_nav == 'support' %}active{% endif %}">
+      <span class="sidebar-icon">💬</span> Support Chat
+    </a>
+    <a href="{% url 'support:feedback' %}" class="sidebar-link {% if active_nav == 'feedback' %}active{% endif %}">
+      <span class="sidebar-icon">⭐</span> Feedback
+    </a>
+  {% endif %}
+
+</aside>

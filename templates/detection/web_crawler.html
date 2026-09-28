@@ -1,0 +1,135 @@
+{% extends "app_base.html" %}
+{% load static %}
+
+{% block title %}Real-Time Deepfake Web & Media Monitor - VeriScan AI{% endblock %}
+
+{% block app_content %}
+<div class="page-container" style="max-width: 1200px; margin: 0 auto; padding: 24px;">
+
+  <!-- Header Banner -->
+  <div style="background: linear-gradient(135deg, #0f172a, #1e1b4b); border: 1px solid rgba(16, 185, 129, 0.3); padding: 24px; border-radius: 16px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+    <div>
+      <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; margin-bottom: 8px;">
+        🌐 PUBLIC WEB CRAWLER & SOURCE CITATIONS
+      </div>
+      <h1 style="font-size: 28px; font-weight: 800; color: #f8fafc; margin: 0;">
+        Real-Time Deepfake Web & Media Monitor
+      </h1>
+      <p style="color: #94a3b8; font-size: 14px; margin-top: 6px; max-width: 650px;">
+        Monitor public news feeds, web URLs, and media sources for target names/brands. The crawler evaluates media authenticity and displays full source citations.
+      </p>
+    </div>
+  </div>
+
+  <!-- Target Search Form -->
+  <div class="card mb-24" style="background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 20px;">
+    <form method="POST" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+      {% csrf_token %}
+      <div style="flex: 1; min-width: 260px;">
+        <label style="display: block; font-size: 12px; font-weight: 700; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase;">
+          Target Name / Brand / Public Figure
+        </label>
+        <input type="text" name="target_name" placeholder="e.g. Elon Musk, VeriScan AI, TechCorp..." required style="width: 100%; background: #0f172a; border: 1px solid #475569; color: #f8fafc; padding: 12px 16px; border-radius: 10px; font-size: 14px;">
+      </div>
+
+      <div style="min-width: 180px;">
+        <label style="display: block; font-size: 12px; font-weight: 700; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase;">
+          Category
+        </label>
+        <select name="category" style="width: 100%; background: #0f172a; border: 1px solid #475569; color: #f8fafc; padding: 12px 16px; border-radius: 10px; font-size: 14px;">
+          <option value="Person/Public Figure">Person / Public Figure</option>
+          <option value="Brand/Company">Brand / Company</option>
+          <option value="News Topic">News Topic</option>
+        </select>
+      </div>
+
+      <div style="align-self: flex-end;">
+        <button type="submit" class="btn btn-primary" style="padding: 12px 24px; font-weight: 700; background: linear-gradient(135deg, #10b981, #059669); border: none;">
+          🌐 Launch Web Crawler Scan
+        </button>
+      </div>
+    </form>
+  </div>
+
+  {% if active_target %}
+  <!-- Active Target Header & Stats -->
+  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 20px;">
+    <div>
+      <h2 style="font-size: 22px; font-weight: 700; color: #f8fafc; margin: 0;">
+        Active Monitoring: <span style="color: #60a5fa;">{{ active_target.target_name }}</span>
+      </h2>
+      <span style="color: #94a3b8; font-size: 13px;">Category: {{ active_target.category }}</span>
+    </div>
+
+    <div style="display: flex; gap: 12px;">
+      <div style="background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3); padding: 8px 16px; border-radius: 10px; color: #60a5fa; font-weight: 700; font-size: 13px;">
+        {{ total_sources }} Sources Analyzed
+      </div>
+      <div style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); padding: 8px 16px; border-radius: 10px; color: #f87171; font-weight: 700; font-size: 13px;">
+        {{ fake_sources_count }} High Risk Deepfakes
+      </div>
+      <div style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); padding: 8px 16px; border-radius: 10px; color: #34d399; font-weight: 700; font-size: 13px;">
+        {{ real_sources_count }} Authentic Media
+      </div>
+    </div>
+  </div>
+
+  <!-- Discovered Sources & Citations Table -->
+  <div class="card" style="background: #1e293b; border: 1px solid #334155; border-radius: 16px; overflow: hidden; margin-bottom: 24px;">
+    <div style="padding: 16px 20px; background: #0f172a; border-bottom: 1px solid #334155; font-weight: 700; color: #f8fafc; font-size: 15px;">
+      📜 Discovered Public Sources & Media Citations
+    </div>
+    
+    <div style="overflow-x: auto;">
+      <table class="data-table" style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr style="background: #0f172a; border-bottom: 1px solid #334155; color: #94a3b8; font-size: 12px; text-transform: uppercase;">
+            <th style="padding: 14px 18px;">Source & Domain</th>
+            <th style="padding: 14px 18px;">Article Title & Snippet</th>
+            <th style="padding: 14px 18px;">Deepfake Risk Score</th>
+            <th style="padding: 14px 18px;">Source Link</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for src in discovered_sources %}
+          <tr style="border-bottom: 1px solid #334155;">
+            <td style="padding: 14px 18px; white-space: nowrap;">
+              <strong style="color: #f8fafc; display: block;">{{ src.source_name }}</strong>
+              <span style="font-family: monospace; color: #38bdf8; font-size: 12px;">🌐 {{ src.domain }}</span>
+            </td>
+            <td style="padding: 14px 18px;">
+              <div style="font-weight: 600; color: #e2e8f0; margin-bottom: 4px;">{{ src.title }}</div>
+              <div style="color: #94a3b8; font-size: 12px;">{{ src.snippet }}</div>
+            </td>
+            <td style="padding: 14px 18px; white-space: nowrap;">
+              {% if src.deepfake_result == "FAKE" %}
+                <span style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700;">
+                  🚫 HIGH RISK DEEPFAKE ({{ src.confidence }}%)
+                </span>
+              {% else %}
+                <span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700;">
+                  ✓ AUTHENTIC ({{ src.confidence }}%)
+                </span>
+              {% endif %}
+            </td>
+            <td style="padding: 14px 18px; white-space: nowrap;">
+              <a href="{{ src.url }}" target="_blank" class="btn btn-outline btn-sm" style="color: #60a5fa; border-color: rgba(96, 165, 250, 0.4);">
+                🔗 Visit Source →
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="4" style="padding: 32px; text-align: center; color: #94a3b8;">
+              No public sources discovered yet. Run a scan above to populate source citations.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

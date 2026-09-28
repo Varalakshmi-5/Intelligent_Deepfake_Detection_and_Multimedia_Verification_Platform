@@ -1,0 +1,64 @@
+{% extends "app_base.html" %}
+{% block title %}Manage Users · VeriScan AI{% endblock %}
+{% block app_content %}
+  <h1 class="mb-24">Manage Users</h1>
+
+  <form method="get" class="toolbar">
+    <input type="text" name="q" value="{{ query }}" placeholder="Search by name or email...">
+    <button type="submit" class="btn btn-outline btn-sm">Search</button>
+  </form>
+
+  <div class="card-flat" style="overflow-x:auto;">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Name</th><th>Email</th><th>Status</th><th>Access</th><th>Detections</th><th>Joined</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td>{{ u.name }}</td>
+          <td>{{ u.email }}</td>
+          <td>
+            {% if not u.is_active %}
+              <span class="pill pill-disabled">Disabled</span>
+            {% elif u.is_verified %}
+              <span class="pill pill-verified">Verified</span>
+            {% else %}
+              <span class="pill pill-unverified">Unverified</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if u.has_paid_access %}
+              <span class="pill pill-real">Paid until {{ u.paid_access_until|date:"M d" }}</span>
+            {% else %}
+              <span class="link-muted" style="font-size:12.5px;">{{ u.free_detections_remaining }} free left</span>
+            {% endif %}
+          </td>
+          <td>{{ u.detection_count }}</td>
+          <td>{{ u.date_joined|date:"M d, Y" }}</td>
+          <td>
+            <div class="flex gap-8">
+              <form method="post" action="{% url 'adminpanel:toggle_user_active' u.id %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline btn-sm">{% if u.is_active %}Disable{% else %}Enable{% endif %}</button>
+              </form>
+              <form method="post" action="{% url 'adminpanel:grant_access' u.id %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline btn-sm">🎁 Grant 7 days</button>
+              </form>
+              <form method="post" action="{% url 'adminpanel:delete_user' u.id %}" onsubmit="return confirm('Delete {{ u.email }} and all their detection history? This cannot be undone.');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="text-center link-muted">No users found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

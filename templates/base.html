@@ -1,0 +1,49 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Intelligent Deepfake Detection with Multimedia Verification platform{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  {% block extra_head %}{% endblock %}
+
+</head>
+<body {% if media_theme %} data-media="{{ media_theme }}"{% elif active_nav %} data-media="{{ active_nav }}"{% elif user.is_admin %} data-media="admin"{% endif %}>
+  {% block navbar %}
+  <nav class="navbar">
+    <a href="{% if user.is_authenticated %}{% if user.is_admin %}{% url 'adminpanel:dashboard' %}{% else %}{% url 'detection:dashboard' %}{% endif %}{% else %}{% url 'accounts:landing' %}{% endif %}" class="brand">
+      <span class="dot"></span> Verification AI
+    </a>
+    {% if user.is_authenticated %}
+    <div class="nav-links">
+      <span class="user-chip">
+        <span class="avatar">{{ user.name|slice:":1"|upper }}</span>
+        {{ user.name }}
+        {% if user.is_admin %}<span class="link-muted" style="font-size:11px;">· admin</span>{% endif %}
+      </span>
+      <form method="post" action="{% url 'accounts:logout' %}" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline btn-sm">Log out</button>
+      </form>
+    </div>
+    {% endif %}
+  </nav>
+  {% endblock %}
+
+  {% if messages %}
+  <div class="messages">
+    {% for message in messages %}
+      <div class="msg {{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% block content %}{% endblock %}
+
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

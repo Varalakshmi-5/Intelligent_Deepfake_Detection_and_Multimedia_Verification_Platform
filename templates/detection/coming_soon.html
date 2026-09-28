@@ -1,0 +1,10 @@
+{% extends "app_base.html" %}
+{% block title %}{{ title }} · VeriScan AI{% endblock %}
+{% block app_content %}
+<div class="card text-center" style="padding:70px 30px; max-width:560px; margin:0 auto;">
+  <div style="font-size:48px;">{{ icon }}</div>
+  <h2 class="mt-16">{{ title }}</h2>
+  <p class="mt-16">This module is coming soon. We're extending the same AI-powered verification pipeline used for images to this media type.</p>
+  <a href="{% url 'detection:dashboard' %}" class="btn btn-primary mt-24">Back to Home</a>
+</div>
+{% endblock %}

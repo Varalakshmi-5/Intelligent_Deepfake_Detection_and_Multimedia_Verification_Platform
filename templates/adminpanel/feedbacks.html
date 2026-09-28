@@ -1,0 +1,260 @@
+{% extends "app_base.html" %}
+{% block title %}User Feedbacks · VeriScan AI Admin{% endblock %}
+
+{% block app_content %}
+<div class="mb-24 flex-between">
+  <div>
+    <h1>User Feedbacks</h1>
+    <p class="text-secondary mt-4">Review, search, and manage feedback submitted by platform users.</p>
+  </div>
+</div>
+
+{% if messages %}
+  <div class="mb-20">
+    {% for message in messages %}
+      <div class="alert {% if message.tags == 'success' %}alert-success{% else %}alert-danger{% endif %} mb-12">
+        {{ message }}
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<!-- Stats Cards -->
+<div class="grid-3-col gap-16 mb-24">
+  <div class="card-flat text-center p-16">
+    <div class="text-muted fs-13 uppercase bold mb-4">Total Feedbacks</div>
+    <div style="font-size:28px; font-weight:700; color:var(--text-color, #1e293b);">{{ total_feedbacks }}</div>
+  </div>
+
+  <div class="card-flat text-center p-16">
+    <div class="text-muted fs-13 uppercase bold mb-4">Average Rating</div>
+    <div style="font-size:28px; font-weight:700; color:#f59e0b;">
+      ★ {{ avg_rating }} <span class="fs-14 text-muted">/ 5.0</span>
+    </div>
+  </div>
+
+  <div class="card-flat text-center p-16">
+    <div class="text-muted fs-13 uppercase bold mb-4">Pending Review</div>
+    <div style="font-size:28px; font-weight:700; color:{% if unreviewed_count > 0 %}#ef4444{% else %}#10b981{% endif %};">
+      {{ unreviewed_count }}
+    </div>
+  </div>
+</div>
+
+<!-- Feedback Analytics Charts -->
+<div class="two-col mb-24">
+  <div class="card-flat">
+    <h3 class="mb-16 fs-15">Ratings Breakdown (1 to 5 Stars)</h3>
+    <div style="height: 220px; position: relative;">
+      <canvas id="ratingsChart"></canvas>
+    </div>
+  </div>
+
+  <div class="card-flat">
+    <h3 class="mb-16 fs-15">Feedback Categories Breakdown</h3>
+    <div style="height: 220px; position: relative;">
+      <canvas id="feedbackCatChart"></canvas>
+    </div>
+  </div>
+</div>
+
+
+<!-- Filters Toolbar -->
+<div class="card-flat mb-24 p-16">
+  <form method="get" class="flex-wrap gap-12" style="display:flex; align-items:center;">
+    <div style="flex:1; min-width:200px;">
+      <input type="text" name="q" value="{{ query }}" placeholder="Search by user, subject, or message..." class="form-control">
+    </div>
+
+    <div style="width:160px;">
+      <select name="category" class="form-control" onchange="this.form.submit()">
+        <option value="">All Categories</option>
+        <option value="general" {% if category == 'general' %}selected{% endif %}>General</option>
+        <option value="bug" {% if category == 'bug' %}selected{% endif %}>Bug Report</option>
+        <option value="feature" {% if category == 'feature' %}selected{% endif %}>Feature Request</option>
+        <option value="accuracy" {% if category == 'accuracy' %}selected{% endif %}>Accuracy</option>
+        <option value="other" {% if category == 'other' %}selected{% endif %}>Other</option>
+      </select>
+    </div>
+
+    <div style="width:130px;">
+      <select name="rating" class="form-control" onchange="this.form.submit()">
+        <option value="">All Ratings</option>
+        <option value="5" {% if rating == '5' %}selected{% endif %}>5 Stars (★★★★★)</option>
+        <option value="4" {% if rating == '4' %}selected{% endif %}>4 Stars (★★★★☆)</option>
+        <option value="3" {% if rating == '3' %}selected{% endif %}>3 Stars (★★★☆☆)</option>
+        <option value="2" {% if rating == '2' %}selected{% endif %}>2 Stars (★★☆☆☆)</option>
+        <option value="1" {% if rating == '1' %}selected{% endif %}>1 Star (★☆☆☆☆)</option>
+      </select>
+    </div>
+
+    <div style="width:140px;">
+      <select name="status" class="form-control" onchange="this.form.submit()">
+        <option value="">All Statuses</option>
+        <option value="unreviewed" {% if status == 'unreviewed' %}selected{% endif %}>Pending Review</option>
+        <option value="reviewed" {% if status == 'reviewed' %}selected{% endif %}>Reviewed</option>
+      </select>
+    </div>
+
+    <div>
+      <button type="submit" class="btn btn-primary">Filter</button>
+      {% if query or category or rating or status %}
+        <a href="{% url 'adminpanel:all_feedbacks' %}" class="btn btn-outline ml-4">Reset</a>
+      {% endif %}
+    </div>
+  </form>
+</div>
+
+<!-- Feedbacks Table -->
+<div class="card-flat" style="overflow-x:auto;">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>User</th>
+        <th>Rating & Category</th>
+        <th>Subject & Message</th>
+        <th>Status</th>
+        <th>Submitted</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in feedbacks %}
+      <tr>
+        <td>
+          <strong>{{ f.user.name }}</strong><br>
+          <span class="link-muted" style="font-size:12px;">{{ f.user.email }}</span>
+        </td>
+        <td>
+          <div style="color:#f59e0b; font-weight:bold;">
+            {% if f.rating == 5 %}★★★★★{% elif f.rating == 4 %}★★★★☆{% elif f.rating == 3 %}★★★☆☆{% elif f.rating == 2 %}★★☆☆☆{% else %}★☆☆☆☆{% endif %}
+          </div>
+          <span class="pill pill-unverified mt-4 d-inline-block" style="text-transform:capitalize; font-size:11px;">{{ f.get_category_display }}</span>
+        </td>
+        <td style="max-width:350px;">
+          <strong>{{ f.subject }}</strong>
+          <p class="text-secondary mb-0 mt-4" style="font-size:13px; line-height:1.4;">{{ f.message }}</p>
+
+          {% if f.admin_notes %}
+            <div style="background-color:var(--bg-secondary, #f8fafc); border-left:3px solid var(--primary-color, #3b82f6); padding:6px 10px; border-radius:4px; margin-top:8px; font-size:12px;">
+              <strong>Admin Note:</strong> {{ f.admin_notes }}
+            </div>
+          {% endif %}
+        </td>
+        <td>
+          {% if f.is_reviewed %}
+            <span class="pill pill-real">Reviewed</span>
+          {% else %}
+            <span class="pill pill-fake">Pending</span>
+          {% endif %}
+        </td>
+        <td style="font-size:12px; white-space:nowrap;">{{ f.created_at|date:"M d, Y H:i" }}</td>
+        <td>
+          <div class="flex-column gap-6" style="display:flex; flex-direction:column; gap:6px;">
+            <form method="post" action="{% url 'adminpanel:toggle_feedback_reviewed' f.id %}">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-outline btn-sm w-100" style="font-size:11px;">
+                {% if f.is_reviewed %}Mark Unreviewed{% else %}✔ Mark Reviewed{% endif %}
+              </button>
+            </form>
+
+            <button type="button" class="btn btn-sm btn-secondary w-100" style="font-size:11px;" onclick="toggleNotesForm({{ f.id }})">
+              {% if f.admin_notes %}Edit Response{% else %}+ Add Response{% endif %}
+            </button>
+
+            <form method="post" action="{% url 'adminpanel:delete_feedback' f.id %}" onsubmit="return confirm('Are you sure you want to delete this feedback?');">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-danger btn-sm w-100" style="font-size:11px;">Delete</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+
+      <!-- Inline Admin Response Form Row -->
+      <tr id="notes-row-{{ f.id }}" style="display:none; background-color:var(--bg-secondary, #f8fafc);">
+        <td colspan="6" style="padding:16px;">
+          <form method="post" action="{% url 'adminpanel:add_feedback_notes' f.id %}">
+            {% csrf_token %}
+            <label class="form-label mb-6"><strong>Admin Response / Internal Notes for Feedback #{{ f.id }}</strong></label>
+            <textarea name="admin_notes" class="form-control mb-12" rows="3" placeholder="Enter notes or response visible to user...">{{ f.admin_notes }}</textarea>
+            <div class="flex gap-8">
+              <button type="submit" class="btn btn-primary btn-sm">Save & Mark Reviewed</button>
+              <button type="button" class="btn btn-outline btn-sm" onclick="toggleNotesForm({{ f.id }})">Cancel</button>
+            </div>
+          </form>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="6" class="text-center link-muted p-24">No user feedbacks found.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+function toggleNotesForm(id) {
+  const row = document.getElementById('notes-row-' + id);
+  if (row.style.display === 'none' || row.style.display === '') {
+    row.style.display = 'table-row';
+  } else {
+    row.style.display = 'none';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Ratings Distribution Bar Chart
+  const ctxRatings = document.getElementById('ratingsChart');
+  if (ctxRatings) {
+    new Chart(ctxRatings.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: ['5 Stars', '4 Stars', '3 Stars', '2 Stars', '1 Star'],
+        datasets: [{
+          label: 'Count',
+          data: {{ rating_chart_data|safe }},
+          backgroundColor: '#f59e0b',
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          y: { beginAtZero: true, ticks: { precision: 0 } }
+        }
+      }
+    });
+  }
+
+  // Category Breakdown Doughnut Chart
+  const ctxCat = document.getElementById('feedbackCatChart');
+  if (ctxCat) {
+    new Chart(ctxCat.getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: {{ category_chart_labels|safe }},
+        datasets: [{
+          data: {{ category_chart_data|safe }},
+          backgroundColor: ['#3b82f6', '#ef4444', '#8b5cf6', '#10b981', '#6b7280'],
+          borderWidth: 2,
+          borderColor: '#ffffff'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom' }
+        }
+      }
+    });
+  }
+});
+</script>
+{% endblock %}
+

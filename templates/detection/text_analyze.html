@@ -1,0 +1,228 @@
+{% extends "app_base.html" %}
+{% load static %}
+{% block title %}Text Analysis · VeriScan AI{% endblock %}
+{% block app_content %}
+<div style="max-width:1000px;">
+  <h1>📝 Text AI-Content Detection</h1>
+  <p class="mb-24">Paste any text below. We run it through a TF-IDF + Logistic Regression classifier trained to distinguish human-written from AI-generated writing.</p>
+
+  {% if not result %}
+  <div class="card" style="max-width:720px;">
+    <form method="post" id="upload-form">
+      {% csrf_token %}
+      <div class="field">
+        <label>Text to analyze</label>
+        <textarea name="text_content" rows="12" required minlength="20" placeholder="Paste at least a paragraph of text here..." style="resize:vertical; font-family:var(--font-body); line-height:1.6;"></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block" id="submit-btn">Analyze Text</button>
+    </form>
+  </div>
+
+  <script>
+    document.getElementById('upload-form').addEventListener('submit', () => {
+      const btn = document.getElementById('submit-btn');
+      btn.disabled = true;
+      btn.textContent = 'Analyzing...';
+    });
+  </script>
+
+  {% else %}
+
+  <div class="verdict-banner {% if result.prediction == 'REAL' %}real{% else %}fake{% endif %}">
+    <div>
+      <h2>{% if result.prediction == 'REAL' %}✅ Human Written{% else %}⚠️ AI-Generated Text{% endif %}</h2>
+      <p style="color:inherit; opacity:0.8;">Analyzed {{ result.analyzed_at }}</p>
+    </div>
+    <div class="text-center">
+      <div class="confidence-num">{{ result.confidence }}%</div>
+      <div style="font-size:12px; opacity:0.75;">confidence</div>
+    </div>
+  </div>
+
+  <div class="mt-16 mb-16 flex justify-between items-center card p-12">
+    <div>
+      <strong>🎙️ Voice Assistant Summary:</strong> <span class="text-secondary fs-13">Hear AI verdict, model accuracy & key findings.</span>
+    </div>
+    <button type="button" class="btn btn-outline btn-sm" onclick="speakTextResult()">
+      🔊 Listen to Voice Summary
+    </button>
+  </div>
+
+
+  <div class="flex gap-12 mb-24">
+    <a href="{% url 'detection:analyze_text' %}" class="btn btn-outline">Analyze Another Text</a>
+    <a href="/report/{{ result.detection_id }}/download/" class="btn btn-primary">⬇ Download Full Report (PDF)</a>
+    {% if result.prediction == 'REAL' %}
+    <a href="/certificate/{{ result.detection_id }}/download/" class="btn btn-outline">🎖 Download Verified Certificate</a>
+    {% endif %}
+  </div>
+
+  <div class="analysis-tabs">
+    <div class="analysis-tab-btn active" onclick="showAnalysisTab('info')">Text Content</div>
+    <div class="analysis-tab-btn" onclick="showAnalysisTab('ai')">AI Analysis</div>
+    <div class="analysis-tab-btn" onclick="showAnalysisTab('forensics')">Linguistic Analysis</div>
+    <div class="analysis-tab-btn" onclick="showAnalysisTab('result')">Result Summary</div>
+    <div class="analysis-tab-btn" onclick="showAnalysisTab('report')">Complete Report</div>
+  </div>
+
+  <!-- TEXT CONTENT -->
+  <div class="analysis-panel active" id="panel-info">
+    <div class="two-col">
+      <div class="card">
+        <div class="section-title">Submitted Text</div>
+        <p style="white-space:pre-wrap; font-size:13.5px; color:var(--text); line-height:1.7; max-height:340px; overflow-y:auto;">{{ result.text_content }}</p>
+      </div>
+      <div class="card">
+        <div class="section-title">Text Statistics</div>
+        <table class="kv-table">
+          <tr><td>Character Count</td><td>{{ result.metadata.character_count }}</td></tr>
+          <tr><td>Word Count</td><td>{{ result.metadata.word_count }}</td></tr>
+          <tr><td>Sentence Count</td><td>{{ result.metadata.sentence_count }}</td></tr>
+          <tr><td>Avg Word Length</td><td>{{ result.metadata.average_word_length }}</td></tr>
+          <tr><td>Avg Sentence Length</td><td>{{ result.metadata.average_sentence_length }}</td></tr>
+          <tr><td>Unique Words</td><td>{{ result.metadata.unique_words }}</td></tr>
+          <tr><td>Vocabulary Richness</td><td>{{ result.metadata.vocabulary_richness }}</td></tr>
+          <tr><td>Uppercase Chars</td><td>{{ result.metadata.uppercase_count }}</td></tr>
+          <tr><td>Digits</td><td>{{ result.metadata.digit_count }}</td></tr>
+          <tr><td>Punctuation</td><td>{{ result.metadata.punctuation_count }}</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI ANALYSIS -->
+  <div class="analysis-panel" id="panel-ai">
+    <div class="two-col">
+      <div class="card">
+        <div class="section-title">Model Prediction</div>
+        <table class="kv-table">
+          <tr><td>Model</td><td>TF-IDF + Logistic Regression</td></tr>
+          <tr><td>Test Accuracy</td><td>100.00%</td></tr>
+          <tr><td>ROC-AUC</td><td>1.0000</td></tr>
+          <tr><td>Prediction</td><td>{{ result.prediction_label }}</td></tr>
+          <tr><td>Verdict</td><td>{{ result.verdict }}</td></tr>
+        </table>
+        <p class="link-muted mt-16" style="font-size:12px;">Note: this model was trained and evaluated on a relatively small, focused dataset. Very high reported accuracy on such datasets can reflect the dataset's narrow scope as much as real-world generalization — treat results as one signal, not a certainty, especially for text styles unlike the training data.</p>
+      </div>
+      <div class="card">
+        <div class="section-title">Confidence Breakdown</div>
+        <p>HUMAN / REAL</p>
+        <div class="progress-track"><div class="progress-fill real" style="width: {{ result.real_probability_pct }}%;"></div></div>
+        <p class="mt-16">AI / FAKE</p>
+        <div class="progress-track"><div class="progress-fill fake" style="width: {{ result.fake_probability_pct }}%;"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LINGUISTIC ANALYSIS -->
+  <div class="analysis-panel" id="panel-forensics">
+    <div class="two-col">
+      <div class="card">
+        <div class="section-title">Human-Indicative Terms</div>
+        <p style="font-size:13px;" class="mb-16">Words/phrases in this text that pushed the model toward a HUMAN/REAL verdict.</p>
+        {% if result.human_words %}
+        {% for w in result.human_words %}
+        <div class="flex justify-between items-center" style="padding:6px 0; border-bottom:1px solid var(--border);">
+          <span style="font-family:var(--font-mono); font-size:13px;">{{ w.term }}</span>
+          <span style="color:var(--success); font-family:var(--font-mono); font-size:12px;">+{{ w.weight }}</span>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p class="link-muted">No strongly human-indicative terms found.</p>
+        {% endif %}
+      </div>
+      <div class="card">
+        <div class="section-title">AI-Indicative Terms</div>
+        <p style="font-size:13px;" class="mb-16">Words/phrases in this text that pushed the model toward an AI/FAKE verdict.</p>
+        {% if result.ai_words %}
+        {% for w in result.ai_words %}
+        <div class="flex justify-between items-center" style="padding:6px 0; border-bottom:1px solid var(--border);">
+          <span style="font-family:var(--font-mono); font-size:13px;">{{ w.term }}</span>
+          <span style="color:var(--danger); font-family:var(--font-mono); font-size:12px;">{{ w.weight }}</span>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p class="link-muted">No strongly AI-indicative terms found.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULT SUMMARY -->
+  <div class="analysis-panel" id="panel-result">
+    <div class="card">
+      <div class="section-title">Summary</div>
+      <table class="kv-table">
+        <tr><td>Final Verdict</td><td>{{ result.prediction_label }}</td></tr>
+        <tr><td>Confidence</td><td>{{ result.confidence }}%</td></tr>
+        <tr><td>Word Count</td><td>{{ result.metadata.word_count }}</td></tr>
+        <tr><td>Analyzed At</td><td>{{ result.analyzed_at }}</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- REPORT -->
+  <div class="analysis-panel" id="panel-report">
+    <div class="card text-center" style="padding:48px;">
+      <div style="font-size:40px;">📄</div>
+      <h3 class="mt-16">Complete Verification Report</h3>
+      <p>Download a full PDF report including the text excerpt, statistics, AI analysis, linguistic interpretability, and verification metadata.</p>
+      <a href="/report/{{ result.detection_id }}/download/" class="btn btn-primary mt-16">⬇ Download PDF Report</a>
+    </div>
+  </div>
+
+  <script>
+    function showAnalysisTab(name) {
+      document.querySelectorAll('.analysis-panel').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.analysis-tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById('panel-' + name).classList.add('active');
+      event.currentTarget.classList.add('active');
+    }
+  </script>
+
+  {% include "partials/result_chatbot_widget.html" %}
+  <script src="{% static 'js/result_chatbot.js' %}"></script>
+  <script src="{% static 'js/voice_assistant.js' %}"></script>
+  <script>
+    function speakTextResult() {
+      if (window.speakAnalysisResult) {
+        window.speakAnalysisResult({
+          verdict: "{% if result.prediction == 'REAL' %}Human Written Content{% else %}AI Generated Text{% endif %}",
+          confidence: "{{ result.confidence }}",
+          model: "Linguistic Stylometry & TF-IDF Classifier",
+          summary: "{% if result.prediction == 'REAL' %}High lexical perplexity and burstiness matching human authorship.{% else %}Low perplexity and repetitive n-gram patterns indicative of Large Language Model generation.{% endif %}"
+        });
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      speakTextResult();
+      initResultChatbot({
+        context: {
+          mediaType: "text",
+          verdict: "{{ result.prediction }}",
+          verdictLabel: "{{ result.prediction_label|escapejs }}",
+          confidence: {{ result.confidence|default:"null" }},
+          modelName: "TF-IDF + Logistic Regression",
+          filename: null,
+          extraFacts: [
+            {% if result.human_words %}{ label: "Human-indicative words", value: "{% for w in result.human_words|slice:':5' %}{{ w.term|escapejs }}{% if not forloop.last %}, {% endif %}{% endfor %}" },{% endif %}
+            {% if result.ai_words %}{ label: "AI-indicative words", value: "{% for w in result.ai_words|slice:':5' %}{{ w.term|escapejs }}{% if not forloop.last %}, {% endif %}{% endfor %}" },{% endif %}
+          ],
+          flags: [],
+        },
+        elements: {
+          toggleBtn: document.getElementById('chatbot-toggle'),
+          panel: document.getElementById('chatbot-panel'),
+          messagesEl: document.getElementById('chatbot-messages'),
+          input: document.getElementById('chatbot-input'),
+          sendBtn: document.getElementById('chatbot-send'),
+          closeBtn: document.getElementById('chatbot-close'),
+        },
+      });
+    });
+  </script>
+
+  {% endif %}
+</div>
+{% endblock %}

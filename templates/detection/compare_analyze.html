@@ -1,0 +1,219 @@
+{% extends "app_base.html" %}
+{% load static %}
+{% block title %}Compare Files · VeriScan AI{% endblock %}
+{% block app_content %}
+<div style="max-width:1000px;">
+  <h1>🔍 File Comparison</h1>
+  <p class="mb-24">Upload two files to check if they're identical, near-duplicates, or genuinely different — useful for spotting reused or lightly-edited copies of an image, document, or other file.</p>
+
+  {% if not result %}
+  <div class="card" style="max-width:640px;">
+    <form method="post" enctype="multipart/form-data" id="upload-form">
+      {% csrf_token %}
+      <div class="field">
+        <label>File A</label>
+        <input type="file" name="file_a" required>
+      </div>
+      <div class="field">
+        <label>File B</label>
+        <input type="file" name="file_b" required>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block" id="submit-btn">Compare Files</button>
+    </form>
+  </div>
+  <script>
+    document.getElementById('upload-form').addEventListener('submit', () => {
+      const btn = document.getElementById('submit-btn');
+      btn.disabled = true;
+      btn.textContent = 'Comparing...';
+    });
+  </script>
+
+  {% else %}
+
+  <div class="verdict-banner {% if result.verdict == 'DIFFERENT' %}real{% else %}fake{% endif %}">
+    <div>
+      <h2>
+        {% if result.verdict == 'IDENTICAL' %}🟰 Identical Files
+        {% elif result.verdict == 'NEAR_DUPLICATE' %}⚠️ Near-Duplicate
+        {% elif result.verdict == 'SIMILAR' %}⚠️ Similar
+        {% else %}✅ Different Files{% endif %}
+      </h2>
+      <p style="color:inherit; opacity:0.8;">{{ result.file_a_name }} vs {{ result.file_b_name }} · {{ result.analyzed_at }}</p>
+    </div>
+    {% if result.similarity_pct is not None %}
+    <div class="text-center">
+      <div class="confidence-num">{{ result.similarity_pct }}%</div>
+      <div style="font-size:12px; opacity:0.75;">visual similarity</div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="mt-16 mb-16 flex justify-between items-center card p-12">
+    <div>
+      <strong>🎙️ Voice Assistant Summary:</strong> <span class="text-secondary fs-13">Hear AI verdict, model accuracy & key findings.</span>
+    </div>
+    <button type="button" class="btn btn-outline btn-sm" onclick="speakCompareResult()">
+      🔊 Listen to Voice Summary
+    </button>
+  </div>
+
+
+  <div class="flex gap-12 mb-24">
+    <a href="{% url 'detection:compare_files' %}" class="btn btn-outline">Compare Another Pair</a>
+    <a href="/report/{{ result.detection_id }}/download/" class="btn btn-primary">⬇ Download Report (PDF)</a>
+  </div>
+
+  <div class="card mb-24">
+    <p style="font-size:14px;">{{ result.summary }}</p>
+  </div>
+
+  {% if result.both_images %}
+  <div class="two-col mb-24">
+    <div class="card">
+      <div class="section-title">File A</div>
+      {% if result.file_a_url %}<img src="{{ result.file_a_url }}" class="img-preview">{% endif %}
+    </div>
+    <div class="card">
+      <div class="section-title">File B</div>
+      {% if result.file_b_url %}<img src="{{ result.file_b_url }}" class="img-preview">{% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="card mb-24">
+    <div class="section-title">📐 Layout & Text Alignment Comparison</div>
+    <div class="grid grid-2 gap-16 mt-12">
+      <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:16px;">
+        <div class="text-secondary fs-13 mb-4">File A: <strong>{{ result.file_a_name }}</strong></div>
+        <div class="fs-18 fw-600 mb-8" style="color:#60a5fa;">
+          📍 {{ result.alignment_a.alignment|default:"Left" }} Aligned
+        </div>
+        <div class="fs-12 text-secondary">{{ result.alignment_a.details|default:"Detected via document structure" }}</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:16px;">
+        <div class="text-secondary fs-13 mb-4">File B: <strong>{{ result.file_b_name }}</strong></div>
+        <div class="fs-18 fw-600 mb-8" style="color:#a78bfa;">
+          📍 {{ result.alignment_b.alignment|default:"Left" }} Aligned
+        </div>
+        <div class="fs-12 text-secondary">{{ result.alignment_b.details|default:"Detected via document structure" }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-24">
+    <div class="section-title">📊 Multi-Level Feature Comparison Breakdown</div>
+    <table class="kv-table">
+      <thead>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.1); text-align:left;">
+          <th style="padding:8px;">Feature Granularity</th>
+          <th style="padding:8px;">Metrics & Breakdown</th>
+          <th style="padding:8px;">Match Score / Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>🔤 Word-Wise</strong></td>
+          <td>
+            File A: {{ result.word_metrics.word_count_a|default:0 }} words ({{ result.word_metrics.unique_vocab_a|default:0 }} unique)<br>
+            File B: {{ result.word_metrics.word_count_b|default:0 }} words ({{ result.word_metrics.unique_vocab_b|default:0 }} unique)<br>
+            Common Words: {{ result.word_metrics.common_words_count|default:0 }}
+          </td>
+          <td><span class="badge badge-info">{{ result.word_metrics.vocabulary_similarity_pct|default:0 }}% Vocab Sim</span></td>
+        </tr>
+        <tr>
+          <td><strong>📝 Sentence-Wise</strong></td>
+          <td>
+            File A: {{ result.sentence_metrics.sentence_count_a|default:0 }} sentences<br>
+            File B: {{ result.sentence_metrics.sentence_count_b|default:0 }} sentences<br>
+            Exact Sentence Matches: {{ result.sentence_metrics.matching_sentences_count|default:0 }}
+          </td>
+          <td><span class="badge badge-info">{{ result.sentence_metrics.sentence_similarity_pct|default:0 }}% Sentence Match</span></td>
+        </tr>
+        <tr>
+          <td><strong>📄 Line & Page-Wise</strong></td>
+          <td>
+            Lines: {{ result.line_page_metrics.matching_lines_count|default:0 }} common out of {{ result.line_page_metrics.line_count_a|default:0 }} / {{ result.line_page_metrics.line_count_b|default:0 }}<br>
+            Pages: File A ({{ result.line_page_metrics.page_count_a|default:1 }}) vs File B ({{ result.line_page_metrics.page_count_b|default:1 }})
+          </td>
+          <td>
+            <span class="badge badge-info">{{ result.line_page_metrics.line_similarity_pct|default:0 }}% Line Match</span>
+            {% if result.line_page_metrics.page_match %}<span class="badge badge-success">Same Page Count</span>{% else %}<span class="badge badge-warning">Diff Page Count</span>{% endif %}
+          </td>
+        </tr>
+        <tr>
+          <td><strong>👁️ Visual / Binary Hash</strong></td>
+          <td>
+            SHA-256 A: <span style="font-size:11px;">{{ result.hash_a }}</span><br>
+            SHA-256 B: <span style="font-size:11px;">{{ result.hash_b }}</span>
+          </td>
+          <td>
+            {% if result.exact_match %}
+            <span class="badge badge-success">Exact Binary Match</span>
+            {% elif result.similarity_pct is not None %}
+            <span class="badge badge-warning">{{ result.similarity_pct }}% Visual Sim</span>
+            {% else %}
+            <span class="badge badge-secondary">Distinct Binary</span>
+            {% endif %}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="section-title">Hash Comparison</div>
+    <table class="kv-table">
+      <tr><td>SHA-256 (File A)</td><td style="font-size:11px;">{{ result.hash_a }}</td></tr>
+      <tr><td>SHA-256 (File B)</td><td style="font-size:11px;">{{ result.hash_b }}</td></tr>
+      <tr><td>Exact Match</td><td>{% if result.exact_match %}Yes{% else %}No{% endif %}</td></tr>
+      {% if result.similarity_pct is not None %}
+      <tr><td>Visual Similarity</td><td>{{ result.similarity_pct }}%</td></tr>
+      {% endif %}
+    </table>
+  </div>
+
+
+  {% include "partials/result_chatbot_widget.html" %}
+  <script src="{% static 'js/result_chatbot.js' %}"></script>
+  <script src="{% static 'js/voice_assistant.js' %}"></script>
+  <script>
+    function speakCompareResult() {
+      if (window.speakAnalysisResult) {
+        window.speakAnalysisResult({
+          verdict: "File Comparison Result: {{ result.verdict|escapejs }}",
+          confidence: {% if result.similarity_pct %}"{{ result.similarity_pct }}"{% else %}null{% endif %},
+          model: "Perceptual Hash & Binary Difference Comparator",
+          summary: "{{ result.summary|escapejs }}"
+        });
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      speakCompareResult();
+      initResultChatbot({
+        context: {
+          mediaType: "file comparison",
+          verdict: "{{ result.verdict }}",
+          verdictLabel: "{{ result.verdict }}",
+          confidence: {{ result.similarity_pct|default:"null" }},
+          modelName: "SHA-256 + perceptual hash (aHash)",
+          filename: "{{ result.file_a_name|escapejs }} vs {{ result.file_b_name|escapejs }}",
+          extraFacts: [{ label: "Summary", value: "{{ result.summary|escapejs }}" }],
+          flags: [],
+        },
+        elements: {
+          toggleBtn: document.getElementById('chatbot-toggle'),
+          panel: document.getElementById('chatbot-panel'),
+          messagesEl: document.getElementById('chatbot-messages'),
+          input: document.getElementById('chatbot-input'),
+          sendBtn: document.getElementById('chatbot-send'),
+          closeBtn: document.getElementById('chatbot-close'),
+        },
+      });
+    });
+  </script>
+  {% endif %}
+</div>
+{% endblock %}
+

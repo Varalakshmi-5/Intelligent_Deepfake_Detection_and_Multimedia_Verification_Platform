@@ -1,0 +1,125 @@
+{% extends "app_base.html" %}
+{% load static %}
+{% block title %}Link Safety Check · VeriScan AI{% endblock %}
+{% block app_content %}
+<div style="max-width:1000px;">
+  <h1>🔗 Link Safety Checker</h1>
+  <p class="mb-24">Paste any URL. This runs a rule-based analysis — no gateway fetches the actual link, so it's completely safe to check suspicious URLs. Checks for phishing patterns, lookalike domains, and other red flags.</p>
+
+  {% if not result %}
+  <div class="card" style="max-width:640px;">
+    <form method="post" id="upload-form">
+      {% csrf_token %}
+      <div class="field">
+        <label>URL to check</label>
+        <input type="text" name="url" required placeholder="https://example.com/some-link" style="font-family:var(--font-mono);">
+      </div>
+      <button type="submit" class="btn btn-primary btn-block" id="submit-btn">Check Link</button>
+    </form>
+  </div>
+  <script>
+    document.getElementById('upload-form').addEventListener('submit', () => {
+      const btn = document.getElementById('submit-btn');
+      btn.disabled = true;
+      btn.textContent = 'Checking...';
+    });
+  </script>
+
+  {% else %}
+
+  <div class="verdict-banner {% if result.risk_tier == 'LOW' %}real{% else %}fake{% endif %}">
+    <div>
+      <h2>
+        {% if result.risk_tier == 'LOW' %}✅ {{ result.verdict }}
+        {% elif result.risk_tier == 'MEDIUM' %}⚠️ {{ result.verdict }}
+        {% else %}🚩 {{ result.verdict }}{% endif %}
+      </h2>
+      <p style="color:inherit; opacity:0.8; word-break:break-all;">{{ result.url }} · analyzed {{ result.analyzed_at }}</p>
+    </div>
+    <div class="text-center">
+      <div class="confidence-num">{{ result.risk_tier }}</div>
+      <div style="font-size:12px; opacity:0.75;">risk level</div>
+    </div>
+  </div>
+
+  <div class="mt-16 mb-16 flex justify-between items-center card p-12">
+    <div>
+      <strong>🎙️ Voice Assistant Summary:</strong> <span class="text-secondary fs-13">Hear AI verdict, model accuracy & key findings.</span>
+    </div>
+    <button type="button" class="btn btn-outline btn-sm" onclick="speakLinkResult()">
+      🔊 Listen to Voice Summary
+    </button>
+  </div>
+
+  <div class="flex gap-12 mb-24">
+    <a href="{% url 'detection:analyze_link' %}" class="btn btn-outline">Check Another Link</a>
+    <a href="/report/{{ result.detection_id }}/download/" class="btn btn-primary">⬇ Download Report (PDF)</a>
+    {% if result.risk_tier == 'LOW' %}
+    <a href="/certificate/{{ result.detection_id }}/download/" class="btn btn-outline">🎖 Download Verified Certificate</a>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="section-title">Host</div>
+    <p style="font-family:var(--font-mono); font-size:14px;">{{ result.host }}</p>
+  </div>
+
+  <div class="card mt-24">
+    <div class="section-title">Findings</div>
+    {% for flag in result.flags %}
+    <div class="flex gap-8 mt-8">
+      <span>•</span>
+      <span>{{ flag }}</span>
+    </div>
+    {% empty %}
+    <p class="link-muted">No security flags raised.</p>
+    {% endfor %}
+    <p class="link-muted mt-16" style="font-size:12px;">This is a rule-based lexical/structural analysis of the URL itself — the link is never actually visited. Treat results as risk indicators, not definitive proof.</p>
+  </div>
+
+  {% include "partials/result_chatbot_widget.html" %}
+  <script src="{% static 'js/result_chatbot.js' %}"></script>
+  <script src="{% static 'js/voice_assistant.js' %}"></script>
+  <script>
+    function speakLinkResult() {
+      if (window.speakAnalysisResult) {
+        window.speakAnalysisResult({
+          verdict: "{{ result.verdict|escapejs }}",
+          confidence: null,
+          model: "URL Heuristic & Phishing Safety Inspector",
+          summary: "Link risk tier is {{ result.risk_tier }}. Host evaluated: {{ result.host|escapejs }}."
+        });
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      speakLinkResult();
+      initResultChatbot({
+        context: {
+          mediaType: "link",
+          verdict: "{{ result.risk_tier }}",
+          verdictLabel: "{{ result.verdict|escapejs }}",
+          confidence: null,
+          modelName: null,
+          filename: null,
+          extraFacts: [
+            { label: "Host", value: "{{ result.host|escapejs }}" },
+          ],
+          flags: [
+            {% for flag in result.flags %}"{{ flag|escapejs }}",{% endfor %}
+          ],
+        },
+        elements: {
+          toggleBtn: document.getElementById('chatbot-toggle'),
+          panel: document.getElementById('chatbot-panel'),
+          messagesEl: document.getElementById('chatbot-messages'),
+          input: document.getElementById('chatbot-input'),
+          sendBtn: document.getElementById('chatbot-send'),
+          closeBtn: document.getElementById('chatbot-close'),
+        },
+      });
+    });
+  </script>
+  {% endif %}
+</div>
+{% endblock %}

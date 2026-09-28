@@ -1,0 +1,13 @@
+services:
+  web:
+    build: .
+    container_name: veriscan_ai_web
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./media:/app/media
+      - ./db.sqlite3:/app/db.sqlite3
+    environment:
+      - SECRET_KEY=your-production-secret-key-here
+      - DEBUG=False
+      - ALLOWED_HOSTS=*

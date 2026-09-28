@@ -1,0 +1,17 @@
+.env
+.env.*
+db.sqlite3
+__pycache__/
+*.pyc
+staticfiles/
+media/uploads/*
+media/reports/*
+media/agent_uploads/*
+!media/uploads/.gitkeep
+!media/reports/.gitkeep
+.DS_Store
+*.egg-info/
+.venv/
+venv/
+*.pdf
+.idea/

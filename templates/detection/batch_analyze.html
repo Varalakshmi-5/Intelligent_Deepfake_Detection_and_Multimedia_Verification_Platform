@@ -1,0 +1,125 @@
+{% extends "app_base.html" %}
+{% load static %}
+
+{% block title %}Batch Multi-File Media Deepfake Detection - VeriScan AI{% endblock %}
+
+{% block app_content %}
+<div class="page-container" style="max-width: 1100px; margin: 0 auto; padding: 24px;">
+
+  <div class="page-header" style="margin-bottom: 24px;">
+    <h1 style="font-size: 26px; font-weight: 800; color: #f8fafc; margin: 0; display: flex; align-items: center; gap: 10px;">
+      📁 Batch Multi-File Media Deepfake Detection
+    </h1>
+    <p style="color: #94a3b8; font-size: 14px; margin-top: 6px;">
+      Select multiple media files (Images, Audios, Videos, Documents) at once for parallel bulk analysis.
+    </p>
+  </div>
+
+  {% if not batch_results %}
+  <!-- Upload Card -->
+  <div class="card" style="background: #1e293b; border: 2px dashed #3b82f6; border-radius: 16px; padding: 40px; text-align: center;">
+    <form method="POST" enctype="multipart/form-data" id="batchForm">
+      {% csrf_token %}
+      <div style="font-size: 48px; margin-bottom: 12px;">📥</div>
+      <h2 style="font-size: 20px; color: #f8fafc; font-weight: 700; margin-bottom: 8px;">
+        Upload Multiple Files for Bulk Inspection
+      </h2>
+      <p style="color: #94a3b8; font-size: 13px; margin-bottom: 20px;">
+        Hold Ctrl or Shift to select multiple files at once.
+      </p>
+
+      <input type="file" name="files" id="batchFileInput" multiple accept="image/*,video/*,audio/*,.pdf,.docx,.doc,.txt" style="display: none;" onchange="updateBatchFileList()">
+      
+      <button type="button" onclick="document.getElementById('batchFileInput').click();" class="btn btn-outline" style="padding: 12px 28px; font-weight: 600; font-size: 14px; margin-bottom: 16px;">
+        📂 Select Files
+      </button>
+
+      <div id="fileListPreview" style="max-width: 600px; margin: 16px auto; display: flex; flex-direction: column; gap: 8px; text-align: left;"></div>
+
+      <div id="submitBtnContainer" style="display: none; margin-top: 20px;">
+        <button type="submit" class="btn btn-primary" style="padding: 14px 36px; font-size: 16px; font-weight: 700; background: linear-gradient(135deg, #3b82f6, #1d4ed8);">
+          🚀 Start Batch Deepfake Analysis
+        </button>
+      </div>
+    </form>
+  </div>
+  {% else %}
+
+  <!-- Batch Summary Header -->
+  <div style="display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap;">
+    <div style="flex: 1; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); padding: 16px 20px; border-radius: 12px; color: #60a5fa;">
+      <div style="font-size: 24px; font-weight: 800;">{{ total_files }}</div>
+      <div style="font-size: 13px;">Total Files Analyzed</div>
+    </div>
+    <div style="flex: 1; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); padding: 16px 20px; border-radius: 12px; color: #34d399;">
+      <div style="font-size: 24px; font-weight: 800;">{{ real_count }}</div>
+      <div style="font-size: 13px;">Authentic (REAL) Files</div>
+    </div>
+    <div style="flex: 1; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); padding: 16px 20px; border-radius: 12px; color: #f87171;">
+      <div style="font-size: 24px; font-weight: 800;">{{ fake_count }}</div>
+      <div style="font-size: 13px;">Deepfake / Manipulated</div>
+    </div>
+  </div>
+
+  <!-- Bulk Matrix Table -->
+  <div class="card" style="background: #1e293b; border: 1px solid #334155; border-radius: 16px; overflow: hidden; margin-bottom: 24px;">
+    <table class="data-table" style="width: 100%; border-collapse: collapse;">
+      <thead>
+        <tr style="background: #0f172a; border-bottom: 1px solid #334155;">
+          <th style="padding: 14px 18px;">Filename</th>
+          <th style="padding: 14px 18px;">Media Type</th>
+          <th style="padding: 14px 18px;">Verdict</th>
+          <th style="padding: 14px 18px;">Confidence</th>
+          <th style="padding: 14px 18px;">Report</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in batch_results %}
+        <tr style="border-bottom: 1px solid #334155;">
+          <td style="padding: 14px 18px; font-weight: 600; color: #f8fafc;">{{ item.filename }}</td>
+          <td style="padding: 14px 18px;"><span style="background: rgba(255,255,255,0.08); padding: 4px 10px; border-radius: 6px; font-size: 12px;">{{ item.media_type }}</span></td>
+          <td style="padding: 14px 18px;">
+            {% if item.verdict == "REAL" %}
+              <span class="pill pill-real">✓ REAL</span>
+            {% else %}
+              <span class="pill pill-fake">🚫 FAKE</span>
+            {% endif %}
+          </td>
+          <td style="padding: 14px 18px; font-weight: 700; color: #e2e8f0;">{{ item.confidence }}%</td>
+          <td style="padding: 14px 18px;">
+            <a href="{% url 'detection:download_report' item.detection_id %}" class="btn btn-outline btn-sm">PDF Report</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <a href="{% url 'detection:batch_analyze' %}" class="btn btn-primary" style="padding: 12px 24px;">
+    🔄 Run Another Batch Analysis
+  </a>
+  {% endif %}
+
+</div>
+
+<script>
+  function updateBatchFileList() {
+    const input = document.getElementById('batchFileInput');
+    const preview = document.getElementById('fileListPreview');
+    const btnContainer = document.getElementById('submitBtnContainer');
+
+    preview.innerHTML = '';
+    if (input.files.length > 0) {
+      btnContainer.style.display = 'block';
+      for (let i = 0; i < input.files.length; i++) {
+        const item = document.createElement('div');
+        item.style.cssText = "background: #0f172a; border: 1px solid #334155; padding: 10px 14px; border-radius: 8px; font-size: 13px; color: #cbd5e1; display: flex; justify-content: space-between;";
+        item.innerHTML = `<span>📄 <strong>${input.files[i].name}</strong></span> <span style="color:#94a3b8;">${(input.files[i].size / 1024).toFixed(1)} KB</span>`;
+        preview.appendChild(item);
+      }
+    } else {
+      btnContainer.style.display = 'none';
+    }
+  }
+</script>
+{% endblock %}

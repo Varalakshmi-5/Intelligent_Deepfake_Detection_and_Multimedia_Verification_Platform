@@ -1,0 +1,138 @@
+{% extends "app_base.html" %}
+{% block title %}Submit Feedback · VeriScan AI{% endblock %}
+
+{% block app_content %}
+<div class="header-banner mb-24">
+  <div>
+    <h1>User Feedback</h1>
+    <p class="text-secondary mt-4">We value your input! Share your thoughts, report issues, or suggest new features.</p>
+  </div>
+</div>
+
+{% if messages %}
+  <div class="mb-20">
+    {% for message in messages %}
+      <div class="alert {% if message.tags == 'success' %}alert-success{% else %}alert-danger{% endif %} mb-12">
+        {{ message }}
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<div class="grid-2-col gap-24">
+  <!-- Feedback Submission Form -->
+  <div class="card-flat">
+    <h3 class="mb-16">Submit New Feedback</h3>
+    <form method="POST" action="{% url 'support:feedback' %}">
+      {% csrf_token %}
+      <div class="form-group mb-16">
+        <label for="category" class="form-label">Feedback Category</label>
+        <select name="category" id="category" class="form-control" required>
+          <option value="general">General Feedback</option>
+          <option value="bug">Bug Report</option>
+          <option value="feature">Feature Request</option>
+          <option value="accuracy">Detection Accuracy</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+
+      <div class="form-group mb-16">
+        <label class="form-label">Rating</label>
+        <div class="rating-stars-input flex-gap-8" style="display:flex; align-items:center; font-size:24px; cursor:pointer;">
+          <input type="hidden" name="rating" id="rating-val" value="5">
+          <span class="star-btn" data-value="1" style="color:#f59e0b;">★</span>
+          <span class="star-btn" data-value="2" style="color:#f59e0b;">★</span>
+          <span class="star-btn" data-value="3" style="color:#f59e0b;">★</span>
+          <span class="star-btn" data-value="4" style="color:#f59e0b;">★</span>
+          <span class="star-btn" data-value="5" style="color:#f59e0b;">★</span>
+          <span id="rating-text" class="text-muted fs-14 ml-8" style="font-weight:500;">(5 / 5 Stars)</span>
+        </div>
+      </div>
+
+      <div class="form-group mb-16">
+        <label for="subject" class="form-label">Subject</label>
+        <input type="text" name="subject" id="subject" class="form-control" placeholder="Brief summary of your feedback" required maxlength="200">
+      </div>
+
+      <div class="form-group mb-20">
+        <label for="message" class="form-label">Detailed Message</label>
+        <textarea name="message" id="message" class="form-control" rows="5" placeholder="Tell us more about your experience, issue, or request..." required></textarea>
+      </div>
+
+      <button type="submit" class="btn btn-primary w-100">
+        Submit Feedback
+      </button>
+    </form>
+  </div>
+
+  <!-- Past Feedback History -->
+  <div>
+    <h3 class="mb-16">Your Submitted Feedback</h3>
+    {% if feedbacks %}
+      <div class="flex-column gap-16">
+        {% for f in feedbacks %}
+          <div class="card-flat">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+              <div>
+                <span class="pill pill-unverified" style="text-transform:capitalize; margin-right:6px;">{{ f.get_category_display }}</span>
+                <span style="color:#f59e0b; font-weight:bold;">
+                  {% if f.rating == 5 %}★★★★★{% elif f.rating == 4 %}★★★★☆{% elif f.rating == 3 %}★★★☆☆{% elif f.rating == 2 %}★★☆☆☆{% else %}★☆☆☆☆{% endif %}
+                </span>
+              </div>
+              <span class="text-muted fs-12">{{ f.created_at|date:"M d, Y H:i" }}</span>
+            </div>
+            
+            <h4 class="mb-8" style="font-size:16px;">{{ f.subject }}</h4>
+            <p class="text-secondary mb-12" style="white-space:pre-line; font-size:14px;">{{ f.message }}</p>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border-color, #e5e7eb); padding-top:10px;" class="mt-12">
+              <div>
+                {% if f.is_reviewed %}
+                  <span class="pill pill-real">✔ Reviewed by Admin</span>
+                {% else %}
+                  <span class="pill pill-unverified">Pending Review</span>
+                {% endif %}
+              </div>
+            </div>
+
+            {% if f.admin_notes %}
+              <div style="background-color:var(--bg-secondary, #f8fafc); border-left:3px solid var(--primary-color, #3b82f6); padding:10px 14px; border-radius:4px; margin-top:12px;">
+                <strong style="font-size:13px;" class="d-block mb-4">Admin Response:</strong>
+                <p style="font-size:13px; margin:0;" class="text-secondary">{{ f.admin_notes }}</p>
+              </div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state card-flat text-center p-24">
+        <p class="text-muted">You haven't submitted any feedback yet.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const stars = document.querySelectorAll('.star-btn');
+  const ratingInput = document.getElementById('rating-val');
+  const ratingText = document.getElementById('rating-text');
+
+  stars.forEach(star => {
+    star.addEventListener('click', function() {
+      const val = parseInt(this.getAttribute('data-value'));
+      ratingInput.value = val;
+      ratingText.textContent = '(' + val + ' / 5 Stars)';
+
+      stars.forEach((s, idx) => {
+        if (idx < val) {
+          s.style.color = '#f59e0b';
+        } else {
+          s.style.color = '#ccc';
+        }
+      });
+    });
+  });
+});
+</script>
+{% endblock %}

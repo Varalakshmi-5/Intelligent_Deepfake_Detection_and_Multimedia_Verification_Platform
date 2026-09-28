@@ -1,0 +1,336 @@
+{% extends "app_base.html" %}
+{% load static %}
+{% block title %}Image Analysis · VeriScan AI{% endblock %}
+{% block app_content %}
+<div style="max-width:1000px;">
+  <h1>🖼️ Image Deepfake Detection</h1>
+  <p class="mb-24">Upload a JPG or PNG image. Our EfficientNetB0 model ({{ result.model_accuracy|default:"91% accuracy" }}) will analyze it for signs of AI generation or manipulation.</p>
+
+  {% if not result %}
+  <div class="card" style="max-width:640px;">
+    <form method="post" enctype="multipart/form-data" id="upload-form">
+      {% csrf_token %}
+      <label for="image-input" class="dropzone" id="dropzone">
+        <div class="icon">📤</div>
+        <div id="dropzone-text"><strong>Click to upload</strong> or drag and drop<br><span class="link-muted">JPG or PNG, up to 16MB</span></div>
+        <input type="file" id="image-input" name="image" accept=".jpg,.jpeg,.png" style="display:none;" required>
+      </label>
+      <button type="submit" class="btn btn-primary btn-block mt-16" id="submit-btn">Analyze Image</button>
+    </form>
+  </div>
+
+  <script>
+    const input = document.getElementById('image-input');
+    const zone = document.getElementById('dropzone');
+    const text = document.getElementById('dropzone-text');
+    const form = document.getElementById('upload-form');
+    const submitBtn = document.getElementById('submit-btn');
+
+    input.addEventListener('change', () => {
+      if (input.files[0]) {
+        text.innerHTML = '<strong>' + input.files[0].name + '</strong><br><span class="link-muted">Ready to analyze</span>';
+      }
+    });
+    ['dragover'].forEach(evt => zone.addEventListener(evt, e => { e.preventDefault(); zone.classList.add('dragover'); }));
+    ['dragleave', 'drop'].forEach(evt => zone.addEventListener(evt, e => { e.preventDefault(); zone.classList.remove('dragover'); }));
+    zone.addEventListener('drop', e => {
+      if (e.dataTransfer.files[0]) {
+        input.files = e.dataTransfer.files;
+        input.dispatchEvent(new Event('change'));
+      }
+    });
+    form.addEventListener('submit', () => {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Analyzing... this can take a few seconds';
+    });
+  </script>
+
+  {% else %}
+
+  <!-- VERDICT BANNER -->
+  <div class="verdict-banner {% if result.prediction == 'REAL' %}real{% else %}fake{% endif %}">
+    <div>
+      <h2>{% if result.prediction == 'REAL' %}✅ Likely Authentic{% else %}⚠️ Likely Deepfake{% endif %}</h2>
+      <p style="color:inherit; opacity:0.8;">{{ result.filename }} · analyzed {{ result.analyzed_at }}</p>
+    </div>
+    <div class="text-center">
+      <div class="confidence-num">{{ result.confidence }}%</div>
+      <div style="font-size:12px; opacity:0.75;">confidence</div>
+    </div>
+  </div>
+
+  <div class="mt-16 mb-16 flex justify-between items-center card p-12">
+    <div>
+      <strong>🎙️ Voice Assistant Summary:</strong> <span class="text-secondary fs-13">Hear AI verdict, model accuracy & key findings.</span>
+    </div>
+    <button type="button" class="btn btn-outline btn-sm" onclick="speakImageResult()">
+      🔊 Listen to Voice Summary
+    </button>
+  </div>
+
+
+  <div class="flex gap-12 mb-24 flex-wrap">
+    <a href="{% url 'detection:analyze_image' %}" class="btn btn-outline">Analyze Another Image</a>
+    <a href="/report/{{ result.detection_id }}/download/" class="btn btn-primary">⬇ Download Full Report (PDF)</a>
+    {% if result.prediction == 'REAL' %}
+    <a href="/certificate/{{ result.detection_id }}/download/" class="btn btn-outline">🎖 Download Verified Certificate</a>
+    {% if result.public_id %}
+    <a href="/verify/{{ result.public_id }}/" target="_blank" class="btn btn-outline">🔍 View Public Verification Page</a>
+    {% endif %}
+    {% endif %}
+  </div>
+
+
+  <div class="analysis-tabs">
+    <div class="analysis-tab-btn active" onclick="showAnalysisTab('info')">Image Information</div>
+    <div class="analysis-tab-btn" onclick="showAnalysisTab('ai')">AI Analysis</div>
+    <div class="analysis-tab-btn" onclick="showAnalysisTab('forensics')">Forensic Analysis</div>
+    <div class="analysis-tab-btn" onclick="showAnalysisTab('result')">Result Summary</div>
+    <div class="analysis-tab-btn" onclick="showAnalysisTab('report')">Complete Report</div>
+  </div>
+
+  <!-- IMAGE INFO -->
+  <div class="analysis-panel active" id="panel-info">
+    <div class="two-col">
+      <div>
+        <img src="{{ result.image_url }}" class="img-preview" alt="Uploaded image">
+      </div>
+      <div class="card">
+        <div class="section-title">File Details</div>
+        <table class="kv-table">
+          <tr><td>Filename</td><td>{{ result.filename }}</td></tr>
+          <tr><td>Format</td><td>{{ result.format }}</td></tr>
+          <tr><td>Color Mode</td><td>{{ result.mode }}</td></tr>
+          <tr><td>Dimensions</td><td>{{ result.width }} × {{ result.height }} px</td></tr>
+          <tr><td>File Size</td><td>{{ result.file_size_kb }} KB</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI ANALYSIS -->
+  <div class="analysis-panel" id="panel-ai">
+    <div class="two-col">
+      <div class="card">
+        <div class="section-title">Model Prediction</div>
+        <table class="kv-table">
+          <tr><td>Model</td><td>EfficientNetB0 (fine-tuned)</td></tr>
+          <tr><td>Test Accuracy</td><td>91.02%</td></tr>
+          <tr><td>ROC-AUC</td><td>0.9805</td></tr>
+          <tr><td>Prediction</td><td>{{ result.prediction }}</td></tr>
+          <tr><td>Raw Probability (REAL)</td><td>{{ result.probability }}</td></tr>
+        </table>
+      </div>
+      <div class="card">
+        <div class="section-title">Confidence Breakdown</div>
+        <p>REAL</p>
+        <div class="progress-track"><div class="progress-fill real" style="width: {% if result.prediction == 'REAL' %}{{ result.confidence }}{% else %}{{ 100|add:"-100" }}{% endif %}%;"></div></div>
+        <p class="mt-16">FAKE</p>
+        <div class="progress-track"><div class="progress-fill fake" style="width: {% if result.prediction == 'FAKE' %}{{ result.confidence }}{% else %}0{% endif %}%;"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FORENSICS & INTERACTIVE ELA HEATMAP INSPECTOR -->
+  <div class="analysis-panel" id="panel-forensics">
+    
+    <!-- Interactive Split-Screen Heatmap Inspector -->
+    <div class="card mb-24" style="background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 20px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+        <div>
+          <h3 style="font-size: 18px; font-weight: 700; color: #f8fafc; margin: 0; display: flex; align-items: center; gap: 8px;">
+            🔍 Interactive ELA Heatmap Inspector
+          </h3>
+          <p style="color: #94a3b8; font-size: 13px; margin-top: 4px;">
+            Drag the split-screen slider bar left or right to inspect exact localized tampering, compression edits, and pixel anomalies.
+          </p>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" onclick="setInspectorZoom(1)" class="btn btn-outline btn-sm">1x Reset</button>
+          <button type="button" onclick="setInspectorZoom(2)" class="btn btn-outline btn-sm">🔍 2x Zoom</button>
+          <button type="button" onclick="setInspectorZoom(3.5)" class="btn btn-outline btn-sm">🔬 3.5x Deep Inspection</button>
+        </div>
+      </div>
+
+      <!-- Split Slider Container -->
+      <div id="inspectorViewport" style="position: relative; width: 100%; max-height: 480px; overflow: hidden; border-radius: 12px; border: 1px solid #475569; user-select: none; background: #0f172a;">
+        <!-- Base ELA Image -->
+        <img id="elaImgBase" src="{{ result.ela_url }}" style="width: 100%; display: block; object-fit: contain; pointer-events: none; transition: transform 0.2s;" alt="ELA Heatmap">
+
+        <!-- Top Original Image Clip -->
+        <div id="origImgClip" style="position: absolute; top: 0; left: 0; bottom: 0; width: 50%; overflow: hidden; border-right: 3px solid #3b82f6; box-shadow: 4px 0 14px rgba(59,130,246,0.5);">
+          <img id="origImgTop" src="{{ result.image_url }}" style="height: 100%; max-height: 480px; display: block; object-fit: contain; pointer-events: none; transition: transform 0.2s;" alt="Original Photo">
+        </div>
+
+        <!-- Slider Line Handle -->
+        <div id="sliderHandle" style="position: absolute; top: 0; bottom: 0; left: 50%; width: 4px; background: #3b82f6; cursor: ew-resize; transform: translateX(-50%); display: flex; align-items: center; justify-content: center; z-index: 10;">
+          <div style="width: 32px; height: 32px; border-radius: 50%; background: #3b82f6; color: white; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; box-shadow: 0 0 10px rgba(0,0,0,0.5); border: 2px solid white;">
+            ↔
+          </div>
+        </div>
+
+        <!-- Labels -->
+        <span style="position: absolute; top: 12px; left: 12px; background: rgba(15, 23, 42, 0.85); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; z-index: 12;">
+          📷 ORIGINAL PHOTO
+        </span>
+        <span style="position: absolute; top: 12px; right: 12px; background: rgba(15, 23, 42, 0.85); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.4); padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; z-index: 12;">
+          🔬 ELA TAMPERING HEATMAP
+        </span>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="section-title">Error Level Analysis (ELA)</div>
+        <p style="font-size:13px;">Highlights regions with inconsistent JPEG compression — a classic indicator of localized editing or splicing.</p>
+        <img src="{{ result.ela_url }}" class="img-preview mt-16" alt="ELA analysis">
+        <p class="mt-16">Irregularity score: <strong style="font-family:var(--font-mono);">{{ result.ela_score }} / 100</strong></p>
+      </div>
+      <div class="card">
+        <div class="section-title">Grad-CAM Attention Map</div>
+        <p style="font-size:13px;">Shows which regions of the image most influenced the AI model's decision.</p>
+        {% if result.gradcam_url %}
+        <img src="{{ result.gradcam_url }}" class="img-preview mt-16" alt="Grad-CAM heatmap">
+        <p class="mt-16">Focus area: <strong style="font-family:var(--font-mono);">{{ result.gradcam_focus_pct }}%</strong> of image</p>
+        {% else %}
+        <p class="link-muted mt-16">Grad-CAM could not be generated for this image.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let isDraggingSlider = false;
+    const viewport = document.getElementById('inspectorViewport');
+    const origClip = document.getElementById('origImgClip');
+    const origTop = document.getElementById('origImgTop');
+    const elaBase = document.getElementById('elaImgBase');
+    const handle = document.getElementById('sliderHandle');
+
+    function syncTopImageWidth() {
+      if (viewport && origTop) {
+        origTop.style.width = viewport.clientWidth + 'px';
+      }
+    }
+    window.addEventListener('resize', syncTopImageWidth);
+    setTimeout(syncTopImageWidth, 100);
+
+    function updateSliderPos(clientX) {
+      if (!viewport) return;
+      const rect = viewport.getBoundingClientRect();
+      let x = clientX - rect.left;
+      if (x < 0) x = 0;
+      if (x > rect.width) x = rect.width;
+      const pct = (x / rect.width) * 100;
+      origClip.style.width = pct + '%';
+      handle.style.left = pct + '%';
+    }
+
+    if (viewport) {
+      viewport.addEventListener('mousedown', (e) => {
+        isDraggingSlider = true;
+        updateSliderPos(e.clientX);
+      });
+      window.addEventListener('mousemove', (e) => {
+        if (isDraggingSlider) updateSliderPos(e.clientX);
+      });
+      window.addEventListener('mouseup', () => { isDraggingSlider = false; });
+
+      viewport.addEventListener('touchstart', (e) => {
+        isDraggingSlider = true;
+        updateSliderPos(e.touches[0].clientX);
+      });
+      window.addEventListener('touchmove', (e) => {
+        if (isDraggingSlider) updateSliderPos(e.touches[0].clientX);
+      });
+      window.addEventListener('touchend', () => { isDraggingSlider = false; });
+    }
+
+    function setInspectorZoom(zoomLevel) {
+      if (elaBase && origTop) {
+        elaBase.style.transform = `scale(${zoomLevel})`;
+        origTop.style.transform = `scale(${zoomLevel})`;
+      }
+    }
+  </script>
+
+
+  <!-- RESULT SUMMARY -->
+  <div class="analysis-panel" id="panel-result">
+    <div class="card">
+      <div class="section-title">Summary</div>
+      <table class="kv-table">
+        <tr><td>Final Verdict</td><td>{{ result.prediction }}</td></tr>
+        <tr><td>Confidence</td><td>{{ result.confidence }}%</td></tr>
+        <tr><td>ELA Irregularity</td><td>{{ result.ela_score }} / 100</td></tr>
+        <tr><td>Grad-CAM Focus</td><td>{{ result.gradcam_focus_pct|default:"—" }}%</td></tr>
+        <tr><td>Analyzed At</td><td>{{ result.analyzed_at }}</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- REPORT -->
+  <div class="analysis-panel" id="panel-report">
+    <div class="card text-center" style="padding:48px;">
+      <div style="font-size:40px;">📄</div>
+      <h3 class="mt-16">Complete Verification Report</h3>
+      <p>Download a full PDF report including the image, AI analysis, forensic visualizations, and verification metadata — suitable for sharing or record-keeping.</p>
+      <a href="/report/{{ result.detection_id }}/download/" class="btn btn-primary mt-16">⬇ Download PDF Report</a>
+    </div>
+  </div>
+
+  <script>
+    function showAnalysisTab(name) {
+      document.querySelectorAll('.analysis-panel').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.analysis-tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById('panel-' + name).classList.add('active');
+      event.currentTarget.classList.add('active');
+    }
+  </script>
+
+  {% include "partials/result_chatbot_widget.html" %}
+  <script src="{% static 'js/result_chatbot.js' %}"></script>
+  <script src="{% static 'js/voice_assistant.js' %}"></script>
+  <script>
+    function speakImageResult() {
+      if (window.speakAnalysisResult) {
+        window.speakAnalysisResult({
+          verdict: "{% if result.prediction == 'REAL' %}Likely Authentic{% else %}Likely Deepfake{% endif %}",
+          confidence: "{{ result.confidence }}",
+          model: "EfficientNetB0 Image Classifier",
+          summary: "{% if result.prediction == 'REAL' %}The image pixel distribution matches authentic camera capture.{% else %}High likelihood of AI generation or face manipulation detected.{% endif %}"
+        });
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      speakImageResult();
+      initResultChatbot({
+        context: {
+          mediaType: "image",
+          verdict: "{{ result.prediction }}",
+          verdictLabel: "{% if result.prediction == 'REAL' %}Likely Authentic{% else %}Likely Deepfake{% endif %}",
+          confidence: {{ result.confidence|default:"null" }},
+          modelName: "EfficientNetB0 (fine-tuned)",
+          filename: "{{ result.filename|escapejs }}",
+          extraFacts: [
+            {% if result.ela_score %}{ label: "ELA Score", value: "{{ result.ela_score }}/100" },{% endif %}
+            {% if result.gradcam_focus_pct %}{ label: "Grad-CAM Focus", value: "{{ result.gradcam_focus_pct }}%" },{% endif %}
+          ],
+          flags: [],
+        },
+        elements: {
+          toggleBtn: document.getElementById('chatbot-toggle'),
+          panel: document.getElementById('chatbot-panel'),
+          messagesEl: document.getElementById('chatbot-messages'),
+          input: document.getElementById('chatbot-input'),
+          sendBtn: document.getElementById('chatbot-send'),
+          closeBtn: document.getElementById('chatbot-close'),
+        },
+      });
+    });
+  </script>
+  {% endif %}
+</div>
+{% endblock %}
+

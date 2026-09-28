@@ -1,0 +1,31 @@
+{% extends "app_base.html" %}
+{% block title %}Admin Settings · VeriScan AI{% endblock %}
+{% block app_content %}
+  <h1 class="mb-24">Admin Settings</h1>
+
+  <div class="card" style="max-width:480px;">
+    <div class="section-title">Profile</div>
+    <form method="post">
+      {% csrf_token %}
+      <div class="field">
+        <label>Name</label>
+        <input type="text" name="name" value="{{ user.name }}" required>
+      </div>
+      <div class="field">
+        <label>Email address</label>
+        <input type="email" name="email" value="{{ user.email }}" required>
+      </div>
+      <div class="field">
+        <label>New password <span class="link-muted">(leave blank to keep current password)</span></label>
+        <input type="password" name="new_password" placeholder="At least 8 characters, 1 letter, 1 number">
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Save Changes</button>
+    </form>
+  </div>
+
+  <p class="mt-24 link-muted" style="max-width:480px;">
+    Note: the initial admin account is created from <code>ADMIN_EMAIL</code> / <code>ADMIN_PASSWORD</code>
+    in your <code>.env</code> file the first time the app runs. Changes you make here update the live
+    account — they do not modify the <code>.env</code> file itself.
+  </p>
+{% endblock %}

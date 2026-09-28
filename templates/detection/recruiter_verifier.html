@@ -1,0 +1,128 @@
+{% extends "app_base.html" %}
+{% load static %}
+
+{% block title %}AI Recruiter Profile & Identity Authenticator - VeriScan AI{% endblock %}
+
+{% block app_content %}
+<div class="page-container" style="max-width: 1200px; margin: 0 auto; padding: 24px;">
+
+  <!-- Header Banner -->
+  <div style="background: linear-gradient(135deg, #0f172a, #065f46); border: 1px solid rgba(16, 185, 129, 0.3); padding: 24px; border-radius: 16px; margin-bottom: 24px;">
+    <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; margin-bottom: 8px;">
+      🕵️‍♂️ AI RECRUITER IDENTITY AUTHENTICATOR
+    </div>
+    <h1 style="font-size: 28px; font-weight: 800; color: #f8fafc; margin: 0;">
+      Recruiter Identity & Profile Authenticator
+    </h1>
+    <p style="color: #94a3b8; font-size: 14px; margin-top: 6px; max-width: 680px;">
+      Cross-reference any recruiter name, LinkedIn URL, Telegram handle, or recruiter email address. AI verifies corporate DNS SPF records, checks staff registries, and detects synthetic AI-generated profile avatars.
+    </p>
+  </div>
+
+  <!-- Recruiter Search Form -->
+  <div class="card mb-24" style="background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 20px;">
+    <form method="POST" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;">
+      {% csrf_token %}
+      <div style="flex: 2; min-width: 280px;">
+        <label style="display: block; font-size: 12px; font-weight: 700; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase;">
+          Recruiter Name, Profile Link, or Contact Handle
+        </label>
+        <input type="text" name="recruiter_input" placeholder="e.g. Sarah Jenkins, recruiter@google-hr.tech, linkedin.com/in/recruiter-id, @telegram_recruiter..." required style="width: 100%; background: #0f172a; border: 1px solid #475569; color: #f8fafc; padding: 12px 16px; border-radius: 10px; font-size: 14px;">
+      </div>
+
+      <div style="flex: 1; min-width: 200px;">
+        <label style="display: block; font-size: 12px; font-weight: 700; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase;">
+          Claimed Company (Optional)
+        </label>
+        <input type="text" name="company_name" placeholder="e.g. Google, Microsoft, TCS..." style="width: 100%; background: #0f172a; border: 1px solid #475569; color: #f8fafc; padding: 12px 16px; border-radius: 10px; font-size: 14px;">
+      </div>
+
+      <div>
+        <button type="submit" class="btn btn-primary" style="padding: 12px 28px; font-weight: 700; background: linear-gradient(135deg, #10b981, #059669); border: none;">
+          🔍 Authenticate Recruiter Identity
+        </button>
+      </div>
+    </form>
+  </div>
+
+  {% if active_search %}
+  <!-- Active Search Header & Stats -->
+  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 20px;">
+    <div>
+      <h2 style="font-size: 22px; font-weight: 700; color: #f8fafc; margin: 0;">
+        Identity Audit for: <span style="color: #34d399;">"{{ active_search.recruiter_input }}"</span>
+      </h2>
+      <span style="color: #94a3b8; font-size: 13px;">Audited {{ active_search.searched_at|date:"M d, Y H:i" }}</span>
+    </div>
+
+    <div style="display: flex; gap: 12px;">
+      <div style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); padding: 8px 16px; border-radius: 10px; color: #34d399; font-weight: 700; font-size: 13px;">
+        {{ legit_count }} Legitimate Recruiter
+      </div>
+      <div style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); padding: 8px 16px; border-radius: 10px; color: #f87171; font-weight: 700; font-size: 13px;">
+        {{ suspicious_count }} Synthetic / Phishing Risk
+      </div>
+    </div>
+  </div>
+
+  <!-- Verifications Grid -->
+  <div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px;">
+    {% for item in verifications %}
+    <div class="card" style="background: #1e293b; border: 1px solid {% if item.authenticity_status == 'LEGITIMATE' %}rgba(16, 185, 129, 0.4){% else %}rgba(239, 68, 68, 0.5){% endif %}; border-radius: 16px; padding: 20px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
+        
+        <div style="flex: 1;">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+            <h3 style="font-size: 18px; font-weight: 700; color: #f8fafc; margin: 0;">
+              👤 {{ item.recruiter_name }}
+            </h3>
+            {% if item.authenticity_status == "LEGITIMATE" %}
+              <span style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700;">
+                ✓ VERIFIED CORPORATE RECRUITER ({{ item.confidence_score }}%)
+              </span>
+            {% else %}
+              <span style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700;">
+                🚨 SYNTHETIC / UNVERIFIED IDENTITY ({{ item.confidence_score }}%)
+              </span>
+            {% endif %}
+          </div>
+
+          <div style="color: #94a3b8; font-size: 13px; display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 12px;">
+            <span>🏢 <strong>Claimed Enterprise:</strong> {{ item.claimed_company }}</span>
+            <span>📧 <strong>Domain DNS:</strong> {{ item.email_domain }}</span>
+          </div>
+
+          <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid #334155; border-radius: 10px; padding: 14px; margin-top: 10px;">
+            <div style="font-weight: 700; color: #f8fafc; font-size: 13px; margin-bottom: 8px;">
+              🧠 AI Identity Verification Signals:
+            </div>
+            <ul style="margin: 0; padding-left: 20px; color: #cbd5e1; font-size: 13px; line-height: 1.6;">
+              {% for sig in item.identity_signals %}
+                <li>{{ sig }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+
+          <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+            {% for src in item.verified_sources %}
+              <span style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); color: #60a5fa; padding: 3px 8px; border-radius: 4px; font-size: 11px;">
+                🔍 {{ src }}
+              </span>
+            {% endfor %}
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+    {% empty %}
+    <div class="card" style="background: #1e293b; padding: 40px; text-align: center; color: #94a3b8;">
+      No recruiter identity audit executed yet. Type a recruiter name or email above.
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+

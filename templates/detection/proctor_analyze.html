@@ -1,0 +1,425 @@
+{% extends "app_base.html" %}
+{% load static %}
+{% block title %}AI Interview Proctoring · VeriScan AI{% endblock %}
+{% block app_content %}
+<div style="max-width:1080px;">
+  <div class="flex justify-between items-center mb-16">
+    <div>
+      <h1>📸 AI Online Interview Proctor & Environment Monitor</h1>
+      <p class="text-secondary fs-14">Real-time camera detection for cell phones, books, notebooks, earphones, extra persons, and candidate distance tracking.</p>
+    </div>
+    {% if not result %}
+    <button type="button" class="btn btn-primary" id="start-proctor-btn" onclick="startProctoring()">
+      🎥 Start Live Proctoring Camera
+    </button>
+    {% endif %}
+  </div>
+
+  {% if not result %}
+  <!-- RED ALERT MODAL (POPS UP ON VIOLATION) -->
+  <div id="red-alert-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(220, 38, 38, 0.45); backdrop-filter:blur(6px); z-index:99999; align-items:center; justify-content:center; animation: flashRed 0.8s infinite alternate;">
+    <div style="background:#1e1b1e; border:3px solid #ef4444; border-radius:16px; padding:32px; max-width:520px; text-align:center; box-shadow:0 0 40px rgba(239,68,68,0.8);">
+      <div style="font-size:54px; margin-bottom:12px;">🚨</div>
+      <h2 style="color:#ef4444; font-size:26px; margin-bottom:8px; text-transform:uppercase; letter-spacing:1px;">SECURITY VIOLATION WARNING</h2>
+      <p id="alert-modal-message" style="color:#fecdd3; font-size:16px; font-weight:600; margin-bottom:20px;">
+        Unauthorized Object / Secondary Person Detected!
+      </p>
+      <div id="alert-modal-details" style="background:rgba(239,68,68,0.15); border:1px dashed #ef4444; border-radius:8px; padding:12px; font-size:13px; color:#f87171; margin-bottom:24px;">
+        Please immediately remove prohibited items from candidate view.
+      </div>
+      <button type="button" class="btn btn-primary" style="background:#ef4444; border-color:#dc2626; padding:10px 28px;" onclick="acknowledgeAlert()">
+        Acknowledge & Clear Alert
+      </button>
+    </div>
+  </div>
+
+  <style>
+    @keyframes flashRed {
+      0% { background: rgba(220, 38, 38, 0.35); }
+      100% { background: rgba(185, 28, 28, 0.65); }
+    }
+  </style>
+
+  <div class="grid grid-3 gap-16 mb-24">
+    <div class="card p-16 flex items-center gap-12">
+      <div style="font-size:32px;">🛡️</div>
+      <div>
+        <div class="text-secondary fs-12">Environment Score</div>
+        <div class="fs-22 fw-700" id="integrity-score-num" style="color:#10b981;">100%</div>
+      </div>
+    <div class="card p-16 flex items-center gap-12">
+      <div style="font-size:32px;">👀</div>
+      <div>
+        <div class="text-secondary fs-12">Head Pose / Gaze Check</div>
+        <div class="fs-18 fw-700" id="gaze-status-num" style="color:#10b981;">Facing Camera</div>
+      </div>
+    </div>
+    <div class="card p-16 flex items-center gap-12">
+      <div style="font-size:32px;">📐</div>
+      <div>
+        <div class="text-secondary fs-12">Closest Prohibited Item</div>
+        <div class="fs-18 fw-700" id="closest-dist-num" style="color:#3b82f6;">Safe (No Items)</div>
+      </div>
+    </div>
+    <div class="card p-16 flex items-center gap-12">
+      <div style="font-size:32px;">🎙️</div>
+      <div>
+        <div class="text-secondary fs-12">Audio / Whisper Meter</div>
+        <div class="fs-18 fw-700" id="audio-whisper-status" style="color:#10b981;">Quiet (Normal)</div>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="grid grid-3 gap-24 mb-24">
+    <!-- WEBCAM CANVAS FEED (2 COLS) -->
+    <div class="card" style="grid-column: span 2; position:relative;">
+      <div class="flex justify-between items-center mb-12">
+        <div class="section-title">📹 Live Interview Camera Feed</div>
+        <span class="badge badge-success" id="cam-status-badge">Camera Standby</span>
+      </div>
+
+      <div style="position:relative; width:100%; height:440px; background:#0f172a; border-radius:12px; overflow:hidden; display:flex; align-items:center; justify-content:center;">
+        <video id="proctor-video" autoplay playsinline muted style="width:100%; height:100%; object-fit:cover; display:none;"></video>
+        <canvas id="proctor-canvas" width="640" height="480" style="width:100%; height:100%; object-fit:cover; display:none;"></canvas>
+
+        <div id="cam-placeholder" style="text-align:center; color:#94a3b8;">
+          <div style="font-size:48px; margin-bottom:12px;">📷</div>
+          <p class="fs-14 mb-16">Click "Start Live Proctoring Camera" to initialize AI vision & audio check.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SIDEBAR CONTROL & LOGS (1 COL) -->
+    <div class="card">
+      <div class="section-title">🚨 Real-time Violation Log</div>
+      <div id="violation-log-box" style="height:280px; overflow-y:auto; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:12px; font-size:12px;" class="mb-16">
+        <div class="text-secondary italic" id="empty-log-msg">No violations detected. Environment clean.</div>
+      </div>
+
+      <form method="post" id="proctor-submit-form">
+        {% csrf_token %}
+        <input type="hidden" name="integrity_score" id="input-integrity-score" value="100">
+        <input type="hidden" name="violations_count" id="input-violations-count" value="0">
+        <div id="hidden-warnings-inputs"></div>
+
+        <button type="submit" class="btn btn-outline btn-block" id="end-session-btn" style="display:none;">
+          🛑 End Session & Generate Report
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Load TensorFlow.js and COCO-SSD models for real-time camera object detection -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
+
+  <script>
+    let videoEl, canvasEl, ctx;
+    let isProctoring = false;
+    let integrityScore = 100;
+    let totalViolations = 0;
+    let warningHistory = [];
+    let audioCtx, analyser, microphone;
+    let cocoModel = null;
+    let activePredictions = [];
+    let faceX = 320, faceY = 200;
+    let lastViolationTime = 0;
+
+    // Load COCO-SSD object detection model in background
+    cocoSsd.load().then(model => {
+      cocoModel = model;
+      console.log('COCO-SSD Object Detection Model Loaded');
+    }).catch(err => console.log('COCO-SSD load error', err));
+
+    function formatClassName(rawCls) {
+      const c = rawCls.toLowerCase();
+      if (c.includes('cell') || c.includes('mobile') || c.includes('phone')) return 'Cell Phone';
+      if (c.includes('book')) return 'Book / Reference Notes';
+      if (c.includes('paper')) return 'Paper / Notebook';
+      if (c.includes('laptop')) return 'Laptop / Secondary Screen';
+      if (c.includes('remote')) return 'Remote / Electronic Device';
+      if (c.includes('scissors')) return 'Scissors / Unpermitted Tool';
+      if (c.includes('cup')) return 'Beverage Mug / Cup';
+      return rawCls.charAt(0).toUpperCase() + rawCls.slice(1);
+    }
+
+    function processPredictions(predictions) {
+      const now = Date.now();
+      let personDetections = [];
+
+      predictions.forEach(p => {
+        const cls = p.class.toLowerCase();
+        const score = p.score;
+        const [x, y, w, h] = p.bbox;
+
+        // Person detection with realistic confidence threshold
+        if (cls === 'person' && score >= 0.35) {
+          personDetections.push(p);
+        }
+
+        const prohibitedKeywords = ['phone', 'book', 'laptop', 'remote', 'scissors', 'paper', 'keyboard', 'mouse', 'clock'];
+        const isProhibited = prohibitedKeywords.some(k => cls.includes(k));
+
+        if (isProhibited && (now - lastViolationTime > 2500)) {
+          lastViolationTime = now;
+          const distPx = Math.hypot((x + w/2) - faceX, (y + h/2) - faceY);
+          const distCm = Math.max(5, Math.round(distPx * 0.15));
+          const niceName = formatClassName(cls);
+          triggerViolation('HIGH', niceName, distCm);
+        }
+      });
+
+      if (personDetections.length > 0) {
+        // Set main candidate face from largest person box
+        const mainPerson = personDetections.reduce((max, p) => (p.bbox[2]*p.bbox[3] > max.bbox[2]*max.bbox[3] ? p : max), personDetections[0]);
+        faceX = mainPerson.bbox[0] + mainPerson.bbox[2] / 2;
+        faceY = mainPerson.bbox[1] + mainPerson.bbox[3] / 2;
+      }
+
+      // Flag secondary person whenever 2 or more people appear in camera view
+      if (personDetections.length > 1 && (now - lastViolationTime > 2000)) {
+        lastViolationTime = now;
+        triggerViolation('HIGH', 'Multiple Persons Detected (' + personDetections.length + ' people in room)', 45);
+      }
+    }
+
+
+
+
+
+    function startProctoring() {
+      videoEl = document.getElementById('proctor-video');
+      canvasEl = document.getElementById('proctor-canvas');
+      ctx = canvasEl.getContext('2d');
+
+      navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: true })
+        .then(stream => {
+          videoEl.srcObject = stream;
+          videoEl.style.display = 'none'; // Keep raw video hidden so only single AI canvas renders
+          canvasEl.style.display = 'block';
+          document.getElementById('cam-placeholder').style.display = 'none';
+          document.getElementById('start-proctor-btn').style.display = 'none';
+          document.getElementById('end-session-btn').style.display = 'block';
+          document.getElementById('cam-status-badge').textContent = 'Live Proctoring Active';
+
+          isProctoring = true;
+          initAudioMonitoring(stream);
+          requestAnimationFrame(proctorLoop);
+        })
+        .catch(err => {
+          alert('Camera / Microphone access denied: ' + err.message);
+        });
+    }
+
+    function initAudioMonitoring(stream) {
+      try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioCtx.createAnalyser();
+        microphone = audioCtx.createMediaStreamSource(stream);
+        microphone.connect(analyser);
+        analyser.fftSize = 256;
+      } catch(e) { console.log('Audio monitoring init error', e); }
+    }
+
+    let simulatedTick = 0;
+
+    function proctorLoop() {
+      if (!isProctoring) return;
+
+      ctx.drawImage(videoEl, 0, 0, canvasEl.width, canvasEl.height);
+      simulatedTick++;
+
+      // Real-time AI Object Detection using TensorFlow.js COCO-SSD
+      if (cocoModel && (simulatedTick % 5 === 0)) {
+        cocoModel.detect(videoEl, 10, 0.25).then(predictions => {
+          activePredictions = predictions;
+          processPredictions(predictions);
+        }).catch(err => console.log('COCO-SSD error', err));
+      }
+
+      // Draw bounding boxes for active predictions
+      if (activePredictions && activePredictions.length > 0) {
+        activePredictions.forEach(pred => {
+          const [x, y, width, height] = pred.bbox;
+          const label = pred.class.toLowerCase();
+          const prohibitedKeywords = ['phone', 'book', 'laptop', 'remote', 'scissors', 'paper', 'keyboard', 'mouse', 'clock'];
+          const isProhibited = prohibitedKeywords.some(k => label.includes(k));
+          const isFaceOrPerson = label === 'person';
+
+          ctx.strokeStyle = isProhibited ? '#ef4444' : (isFaceOrPerson ? '#10b981' : '#3b82f6');
+          ctx.lineWidth = 3;
+          ctx.strokeRect(x, y, width, height);
+
+          // Calculate Centroid & Distance to Candidate Face
+          const objCentroidX = x + width / 2;
+          const objCentroidY = y + height / 2;
+          const distPx = Math.hypot(objCentroidX - faceX, objCentroidY - faceY);
+          const distCm = Math.max(5, Math.round(distPx * 0.15));
+
+          ctx.fillStyle = isProhibited ? '#ef4444' : (isFaceOrPerson ? '#10b981' : '#3b82f6');
+          ctx.font = 'bold 14px sans-serif';
+          ctx.fillText(pred.class.toUpperCase() + ' (' + Math.round(pred.score * 100) + '% | ' + distCm + 'cm)', x, y > 18 ? y - 6 : y + 18);
+        });
+      }
+
+
+      // Head Pose / Directional Turn Detection (Right, Left, Center)
+      const gazeStatusEl = document.getElementById('gaze-status-num');
+      const nowTime = Date.now();
+
+      if (faceX < 180) {
+        gazeStatusEl.textContent = '⚠️ Turned Left (Looking Away)';
+        gazeStatusEl.style.color = '#ef4444';
+        if (nowTime - lastViolationTime > 4500) {
+          lastViolationTime = nowTime;
+          triggerViolation('HIGH', 'Candidate Head Turned Left (Looking Off-Screen)', 0);
+        }
+      } else if (faceX > 460) {
+        gazeStatusEl.textContent = '⚠️ Turned Right (Looking Away)';
+        gazeStatusEl.style.color = '#ef4444';
+        if (nowTime - lastViolationTime > 4500) {
+          lastViolationTime = nowTime;
+          triggerViolation('HIGH', 'Candidate Head Turned Right (Looking Off-Screen)', 0);
+        }
+      } else {
+        gazeStatusEl.textContent = 'Facing Camera (Center)';
+        gazeStatusEl.style.color = '#10b981';
+      }
+
+
+      // Check Audio Volume Level
+      if (analyser) {
+        let dataArray = new Uint8Array(analyser.frequencyBinCount);
+        analyser.getByteFrequencyData(dataArray);
+        let avgVol = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+        const audioStatusEl = document.getElementById('audio-whisper-status');
+        if (avgVol > 55) {
+          audioStatusEl.textContent = '⚠️ Speech / Whisper Detected';
+          audioStatusEl.style.color = '#ef4444';
+        } else {
+          audioStatusEl.textContent = 'Quiet (Normal)';
+          audioStatusEl.style.color = '#10b981';
+        }
+      }
+
+
+      requestAnimationFrame(proctorLoop);
+    }
+
+
+    function speakProctorWarning(text) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel(); // Stop any ongoing speech
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0;
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
+    function triggerViolation(type, label, distanceCm) {
+      totalViolations++;
+      integrityScore = Math.max(0, integrityScore - (type === 'HIGH' ? 25 : 15));
+
+      document.getElementById('integrity-score-num').textContent = integrityScore + '%';
+      if (integrityScore < 50) document.getElementById('integrity-score-num').style.color = '#ef4444';
+      else if (integrityScore < 80) document.getElementById('integrity-score-num').style.color = '#f59e0b';
+
+      document.getElementById('closest-dist-num').textContent = distanceCm + 'cm (' + label + ')';
+
+      const warningMsg = '⚠️ ' + label + ' detected (' + distanceCm + 'cm from face)';
+      warningHistory.push(warningMsg);
+
+      // AI Speaks Out Warning Announcement Live
+      speakProctorWarning('Warning! ' + label + ' detected!');
+
+      // Add to log box
+      const logBox = document.getElementById('violation-log-box');
+      const emptyMsg = document.getElementById('empty-log-msg');
+      if (emptyMsg) emptyMsg.remove();
+
+      const item = document.createElement('div');
+      item.style.color = '#f87171';
+      item.style.marginBottom = '8px';
+      item.innerHTML = '<strong>[' + new Date().toLocaleTimeString() + ']</strong> ' + warningMsg;
+      logBox.prepend(item);
+
+      // Trigger Red Alert Modal
+      document.getElementById('alert-modal-message').textContent = label + ' Detected!';
+      document.getElementById('alert-modal-details').textContent = 'Object identified at ' + distanceCm + 'cm from candidate face. Security log updated.';
+      document.getElementById('red-alert-modal').style.display = 'flex';
+
+      // Update hidden form inputs
+      document.getElementById('input-integrity-score').value = integrityScore;
+      document.getElementById('input-violations-count').value = totalViolations;
+
+      const hiddenDiv = document.getElementById('hidden-warnings-inputs');
+      const inp = document.createElement('input');
+      inp.type = 'hidden';
+      inp.name = 'warnings[]';
+      inp.value = warningMsg;
+      hiddenDiv.appendChild(inp);
+    }
+
+
+    function acknowledgeAlert() {
+      document.getElementById('red-alert-modal').style.display = 'none';
+    }
+
+    // Keyboard Shortcuts for Demo Simulation: P = Phone, B = Book, S = Second Person
+    document.addEventListener('keydown', (e) => {
+      if (!isProctoring) return;
+      if (e.key === 'p' || e.key === 'P') triggerViolation('HIGH', 'Unauthorized Cell Phone', 18);
+      if (e.key === 'b' || e.key === 'B') triggerViolation('HIGH', 'Unauthorized Book / Cheatsheet', 24);
+      if (e.key === 's' || e.key === 'S') triggerViolation('HIGH', 'Unauthorized Secondary Person in Room', 42);
+    });
+  </script>
+
+  {% else %}
+
+  <!-- PROCTORING SESSION RESULT SUMMARY -->
+  <div class="verdict-banner {% if result.integrity_score >= 80 %}real{% else %}fake{% endif %}">
+    <div>
+      <h2>
+        {% if result.integrity_score >= 80 %}✅ Clean Environment Verified
+        {% else %}🚨 Security Warnings Flagged{% endif %}
+      </h2>
+      <p style="color:inherit; opacity:0.8;">Session ID: {{ result.session_id }} · {{ result.analyzed_at }}</p>
+    </div>
+    <div class="text-center">
+      <div class="confidence-num">{{ result.integrity_score }}%</div>
+      <div style="font-size:12px; opacity:0.75;">integrity score</div>
+    </div>
+  </div>
+
+  <div class="flex gap-12 mb-24 mt-16">
+    <a href="{% url 'detection:analyze_proctoring' %}" class="btn btn-outline">Start New Session</a>
+    <a href="/report/{{ result.detection_id }}/download/" class="btn btn-primary">⬇ Download Proctoring Report (PDF)</a>
+  </div>
+
+  <div class="card mb-24">
+    <div class="section-title">📋 Session Security Summary</div>
+    <table class="kv-table">
+      <tr><td>Session ID</td><td>{{ result.session_id }}</td></tr>
+      <tr><td>Environment Integrity Score</td><td><strong>{{ result.integrity_score }}%</strong></td></tr>
+      <tr><td>Total Violations Flagged</td><td>{{ result.violations_count }}</td></tr>
+      <tr><td>Analyzed At</td><td>{{ result.analyzed_at }}</td></tr>
+    </table>
+  </div>
+
+  {% if result.warnings %}
+  <div class="card mb-24">
+    <div class="section-title">🚨 Flagged Environment Violations</div>
+    <ul>
+      {% for w in result.warnings %}
+      <li style="color:#ef4444; margin-bottom:6px;">{{ w }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  {% endif %}
+</div>
+{% endblock %}

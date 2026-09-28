@@ -1,0 +1,85 @@
+{% extends "app_base.html" %}
+{% block title %}Support Chat · VeriScan AI{% endblock %}
+{% block app_content %}
+<div style="max-width:640px; margin:0 auto;">
+  <h1 class="mb-8">💬 Chat with Support</h1>
+  <p class="link-muted mb-24">Message an admin directly — for example, if you paid but your access hasn't unlocked yet.</p>
+
+  <div class="card" style="padding:0; overflow:hidden;">
+    <div id="chat-thread" style="height:420px; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:12px; background:var(--bg-soft);">
+      {% for m in thread %}
+      <div class="chat-bubble {% if m.is_from_admin %}chat-bot{% else %}chat-user{% endif %}" style="max-width:75%; {% if m.is_from_admin %}align-self:flex-start;{% else %}align-self:flex-end;{% endif %}">
+        <div style="font-size:11px; opacity:0.7; margin-bottom:3px;">{% if m.is_from_admin %}Admin{% else %}You{% endif %} · {{ m.created_at|date:"M d, H:i" }}</div>
+        {{ m.body }}
+      </div>
+      {% empty %}
+      <div class="empty-state" style="padding:40px 0;">
+        <p>No messages yet. Say hello below!</p>
+      </div>
+      {% endfor %}
+    </div>
+
+    <form method="post" id="chat-form" style="display:flex; gap:10px; padding:16px; border-top:1px solid var(--border);">
+      {% csrf_token %}
+      <input type="text" name="body" id="chat-input" placeholder="Type a message..." required maxlength="2000" style="flex:1;">
+      <button type="submit" class="btn btn-primary">Send</button>
+    </form>
+  </div>
+</div>
+
+<script>
+  const threadEl = document.getElementById('chat-thread');
+  threadEl.scrollTop = threadEl.scrollHeight;
+
+  let lastId = {{ thread.last.id|default:"0" }};
+
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+  }
+
+  document.getElementById('chat-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const input = document.getElementById('chat-input');
+    const body = input.value.trim();
+    if (!body) return;
+
+    fetch("{% url 'support:my_thread' %}", {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': getCookie('csrftoken') },
+      body: 'body=' + encodeURIComponent(body),
+    }).then(() => {
+      const bubble = document.createElement('div');
+      bubble.className = 'chat-bubble chat-user';
+      bubble.style.maxWidth = '75%';
+      bubble.style.alignSelf = 'flex-end';
+      bubble.innerHTML = '<div style="font-size:11px; opacity:0.7; margin-bottom:3px;">You · just now</div>' + body;
+      threadEl.appendChild(bubble);
+      threadEl.scrollTop = threadEl.scrollHeight;
+      input.value = '';
+    });
+  });
+
+  function poll() {
+    fetch("{% url 'support:my_thread_poll' %}?since=" + lastId)
+      .then(r => r.json())
+      .then(data => {
+        data.messages.forEach(m => {
+          if (!m.is_admin) { lastId = m.id; return; } // already shown optimistically
+          const bubble = document.createElement('div');
+          bubble.className = 'chat-bubble chat-bot';
+          bubble.style.maxWidth = '75%';
+          bubble.style.alignSelf = 'flex-start';
+          bubble.innerHTML = `<div style="font-size:11px; opacity:0.7; margin-bottom:3px;">Admin · ${m.created_at}</div>${m.body}`;
+          threadEl.appendChild(bubble);
+          threadEl.scrollTop = threadEl.scrollHeight;
+          lastId = m.id;
+        });
+      })
+      .catch(() => {});
+  }
+
+  setInterval(poll, 4000);
+</script>
+{% endblock %}

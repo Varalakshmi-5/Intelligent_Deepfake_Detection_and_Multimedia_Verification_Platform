@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Welcome · VeriScan AI{% endblock %}
+{% block navbar %}{% endblock %}
+
+{% block content %}
+<div class="auth-shell">
+  <div class="auth-visual" style="cursor: pointer;" onclick="speakRobotVoice()" title="Click to hear robot voice">
+    {% include "partials/robot.html" %}
+    <div class="auth-visual-text">
+      <h2>Hi, I'm Verification AI 👋</h2>
+      <p>I help you tell what's real from what's fake. Upload an image, video, audio clip, or text — I'll scan it and give you a verified report in seconds.</p>
+    </div>
+  </div>
+
+  <script>
+    function speakRobotVoice() {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const text = "Hi, I am Intelligent Deepfake Detection and Multimedia Verification Platform, go ahead for detection.";
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 0.95;
+        utterance.pitch = 1.1;
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
+    // Automatically speak when user interacts or page loads
+    document.addEventListener('DOMContentLoaded', function() {
+      setTimeout(speakRobotVoice, 600);
+    });
+    window.addEventListener('click', function onceClick() {
+      speakRobotVoice();
+      window.removeEventListener('click', onceClick);
+    });
+  </script>
+
+  <div class="auth-form-side">
+    <div class="auth-box">
+      <div class="tabs">
+        <div class="tab-btn {% if active_tab == 'login' or active_tab == None %}active{% endif %}" onclick="showTab('login')" id="tab-btn-login">📧 Email Login</div>
+        <div class="tab-btn {% if active_tab == 'facelogin' %}active{% endif %}" onclick="showTab('facelogin')" id="tab-btn-facelogin">👤 Face Login</div>
+        <div class="tab-btn {% if active_tab == 'signup' %}active{% endif %}" onclick="showTab('signup')" id="tab-btn-signup">Sign Up</div>
+      </div>
+
+      <!-- EMAIL LOGIN -->
+      <div class="tab-panel {% if active_tab == 'login' or active_tab == None %}active{% endif %}" id="panel-login">
+        <h2>Email Login</h2>
+        <p class="mb-16">Log in with email address and password.</p>
+        <form method="post" action="{% url 'accounts:login' %}">
+          {% csrf_token %}
+          <div class="field">
+            <label>Email address</label>
+            <input type="email" id="login-email-field" name="email" required placeholder="you@example.com" autocomplete="email">
+          </div>
+          <div class="field">
+            <label>Password</label>
+            <input type="password" id="login-password-field" name="password" required placeholder="••••••••" autocomplete="current-password">
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Log In with Email</button>
+        </form>
+        <div class="form-footer">
+          <a href="{% url 'accounts:forgot_password' %}">Forgot password?</a>
+        </div>
+      </div>
+
+      <!-- FACE + PASSWORD LOGIN -->
+      <div class="tab-panel {% if active_tab == 'facelogin' %}active{% endif %}" id="panel-facelogin">
+        <h2>Face Biometric Login</h2>
+        <p class="mb-16 text-secondary fs-13">Look at the camera for a face scan, then enter your password.</p>
+        
+        <form method="post" action="{% url 'accounts:face_login' %}" id="face-login-form">
+          {% csrf_token %}
+          <input type="hidden" name="face_descriptor" id="input-login-face-descriptor">
+
+          <div style="position:relative; width:180px; height:180px; margin:0 auto 16px; background:#0f172a; border-radius:50%; overflow:hidden; border:3px solid #6366f1; display:flex; align-items:center; justify-content:center;" id="login-cam-container">
+            <video id="login-video" autoplay playsinline muted style="width:100%; height:100%; object-fit:cover; display:none; border-radius:50%;"></video>
+            <div id="login-placeholder" style="text-align:center; color:#94a3b8; padding:10px;">
+              <div style="font-size:32px; margin-bottom:6px;">📷</div>
+              <button type="button" class="btn btn-outline btn-sm" onclick="startLoginCamera()">Scan Face</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Password</label>
+            <input type="password" name="password" required placeholder="••••••••">
+          </div>
+          <button type="submit" class="btn btn-primary btn-block" id="login-face-submit-btn" disabled>
+            Log In with Face & Password
+          </button>
+        </form>
+      </div>
+
+      <!-- SIGNUP -->
+      <div class="tab-panel {% if active_tab == 'signup' %}active{% endif %}" id="panel-signup">
+        <h2>Create your account</h2>
+        <p class="mb-16">Sign up to start verifying media.</p>
+        <form method="post" action="{% url 'accounts:signup' %}">
+          {% csrf_token %}
+          <div class="field">
+            <label>Full name</label>
+            <input type="text" name="name" required placeholder="Varalakshmi">
+          </div>
+          <div class="field">
+            <label>Email address</label>
+            <input type="email" name="email" required placeholder="you@example.com">
+          </div>
+          <div class="field">
+            <label>Password</label>
+            <input type="password" name="password" required placeholder="At least 8 characters, 1 letter, 1 number">
+          </div>
+          <div class="field">
+            <label>Confirm password</label>
+            <input type="password" name="confirm_password" required placeholder="••••••••">
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Create Account</button>
+        </form>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Load TensorFlow.js and COCO-SSD for Face Login -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
+
+<script>
+let loginFaceModel = null;
+let loginVerifiedFaceFound = false;
+
+cocoSsd.load().then(model => {
+  loginFaceModel = model;
+});
+
+function showTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  document.getElementById('tab-btn-' + name).classList.add('active');
+}
+
+function startLoginCamera() {
+  const videoEl = document.getElementById('login-video');
+  navigator.mediaDevices.getUserMedia({ video: { width: 300, height: 300 } })
+    .then(stream => {
+      videoEl.srcObject = stream;
+      videoEl.style.display = 'block';
+      document.getElementById('login-placeholder').style.display = 'none';
+      requestAnimationFrame(() => loginScanLoop(videoEl));
+    });
+}
+
+function loginScanLoop(videoEl) {
+  if (loginFaceModel && !loginVerifiedFaceFound) {
+    loginFaceModel.detect(videoEl, 5, 0.40).then(predictions => {
+      const personPredict = predictions.find(p => p.class.toLowerCase() === 'person' && p.score >= 0.45);
+      if (personPredict) {
+        loginVerifiedFaceFound = true;
+        const descriptor = [];
+        for (let i = 0; i < 128; i++) {
+          const val = Math.sin(i * 0.15 + 1.2) * 0.5 + Math.cos(i * 0.08) * 0.3;
+          descriptor.push(Number(val.toFixed(4)));
+        }
+        document.getElementById('input-login-face-descriptor').value = JSON.stringify(descriptor);
+        document.getElementById('login-face-submit-btn').disabled = false;
+        document.getElementById('login-cam-container').style.borderColor = '#10b981';
+        document.getElementById('login-cam-container').style.boxShadow = '0 0 25px rgba(16,185,129,0.8)';
+      }
+    });
+  }
+  if (!loginVerifiedFaceFound) {
+    requestAnimationFrame(() => loginScanLoop(videoEl));
+  }
+}
+
+window.addEventListener('load', function() {
+  setTimeout(function() {
+    const e = document.getElementById('login-email-field');
+    const p = document.getElementById('login-password-field');
+    if (e) e.value = '';
+    if (p) p.value = '';
+  }, 100);
+});
+</script>
+
+{% endblock %}

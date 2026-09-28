@@ -1,0 +1,57 @@
+{% extends "app_base.html" %}
+{% block title %}Unlock Access · VeriScan AI{% endblock %}
+{% block app_content %}
+<div style="max-width:560px; margin:0 auto;">
+  <div class="card text-center" style="padding:48px 36px;">
+
+    {% if pending_request %}
+      <div style="font-size:44px;">⏳</div>
+      <h2 class="mt-16">Payment submitted — awaiting approval</h2>
+      <p class="mt-8">We've received your payment reference and it's waiting for an admin to verify it. This is usually quick, but can take a little while depending on when the admin checks.</p>
+      <div class="card mt-24" style="background:var(--surface-2); text-align:left;">
+        <table class="kv-table">
+          <tr><td>Reference (UTR)</td><td>{{ pending_request.utr_reference }}</td></tr>
+          <tr><td>Amount Claimed</td><td>{{ pending_request.amount_display }}</td></tr>
+          <tr><td>Submitted</td><td>{{ pending_request.submitted_at|date:"M d, Y H:i" }}</td></tr>
+          <tr><td>Status</td><td><span class="pill pill-unverified">Pending Review</span></td></tr>
+        </table>
+      </div>
+      <p class="link-muted mt-16" style="font-size:12.5px;">Once approved, you'll automatically get {{ access_days }} days of unlimited access — no need to do anything else. Refresh this page later to check.</p>
+
+    {% else %}
+      <div style="font-size:44px;">🔒</div>
+      <h2 class="mt-16">Your free detections are used up</h2>
+      <p class="mt-8">You've used all {{ user.free_detections_used }} of your free detections. Pay ₹{{ price_inr }} via UPI to unlock {{ access_days }} days of unlimited detection across all media types.</p>
+
+      {% if not upi_configured %}
+      <div class="msg error mt-24" style="text-align:left;">
+        <strong>Payments aren't configured yet.</strong> The site admin needs to add
+        <code>UPI_ID</code> to the server's <code>.env</code> file before this page can
+        show a working QR code.
+      </div>
+      {% else %}
+      <div class="mt-24">
+        <img src="{{ qr_data_uri }}" alt="UPI payment QR code" style="width:220px; height:220px; border-radius:var(--radius-sm); border:1px solid var(--border);">
+        <div class="mt-8" style="font-family:var(--font-mono); font-size:14px;">{{ upi_id }}</div>
+        <div class="link-muted" style="font-size:12.5px;">Scan with any UPI app (GPay, PhonePe, Paytm...) and pay exactly ₹{{ price_inr }}</div>
+      </div>
+
+      <form method="post" enctype="multipart/form-data" class="mt-24" style="text-align:left;">
+        {% csrf_token %}
+        <div class="field">
+          <label>UPI Transaction / Reference Number (UTR)</label>
+          <input type="text" name="utr_reference" required placeholder="e.g. 123456789012" maxlength="64">
+          <p class="link-muted mt-8" style="font-size:12px;">Find this in your UPI app's transaction history right after paying — usually labeled "UTR" or "Reference No."</p>
+        </div>
+        <div class="field">
+          <label>Payment Screenshot <span class="link-muted">(optional, helps speed up approval)</span></label>
+          <input type="file" name="screenshot" accept="image/*">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Submit for Verification</button>
+      </form>
+      {% endif %}
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}

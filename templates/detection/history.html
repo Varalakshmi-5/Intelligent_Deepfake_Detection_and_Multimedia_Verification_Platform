@@ -1,0 +1,41 @@
+{% extends "app_base.html" %}
+{% block title %}My Reports · VeriScan AI{% endblock %}
+{% block app_content %}
+<h1 class="mb-24">My Verification History</h1>
+
+{% if detections %}
+<div class="card-flat" style="overflow-x:auto;">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Media</th><th>Filename</th><th>Result</th><th>Confidence</th><th>Date</th><th>Report</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in detections %}
+      <tr>
+        <td>{{ d.get_media_type_display }}</td>
+        <td>{{ d.original_filename }}</td>
+        <td><span class="pill {% if d.result == 'REAL' %}pill-real{% else %}pill-fake{% endif %}">{{ d.result }}</span></td>
+        <td>{{ d.confidence }}%</td>
+        <td>{{ d.created_at|date:"M d, Y H:i" }}</td>
+        <td>
+          {% if d.report_filename %}
+          <a href="{% url 'detection:download_report' d.id %}" class="btn btn-outline btn-sm">Report</a>
+          {% else %}—{% endif %}
+          {% if d.is_verified_authentic %}
+          <a href="{% url 'detection:download_certificate' d.id %}" class="btn btn-outline btn-sm">🎖 Certificate</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">
+  <p>You haven't analyzed anything yet.</p>
+  <a href="{% url 'detection:dashboard' %}" class="btn btn-primary mt-16">Analyze Something</a>
+</div>
+{% endif %}
+{% endblock %}

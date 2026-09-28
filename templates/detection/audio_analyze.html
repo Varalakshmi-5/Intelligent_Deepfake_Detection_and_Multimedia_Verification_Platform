@@ -1,0 +1,230 @@
+{% extends "app_base.html" %}
+{% load static %}
+{% block title %}Audio Analysis · VeriScan AI{% endblock %}
+{% block app_content %}
+<div style="max-width:1000px;">
+  <h1>🎵 Audio Deepfake Detection</h1>
+  <p class="mb-24">Upload an audio clip. We convert it to a Log-Mel spectrogram and run it through our CNN model (99.93% test accuracy, ROC-AUC 1.0000).</p>
+
+  {% if not result %}
+  <div class="card" style="max-width:640px;">
+    <form method="post" enctype="multipart/form-data" id="upload-form">
+      {% csrf_token %}
+      <label for="audio-input" class="dropzone" id="dropzone">
+        <div class="icon">📤</div>
+        <div id="dropzone-text"><strong>Click to upload</strong> or drag and drop<br><span class="link-muted">WAV, MP3, FLAC, M4A, OGG, or AAC</span></div>
+        <input type="file" id="audio-input" name="audio" accept=".wav,.mp3,.flac,.m4a,.ogg,.aac" style="display:none;" required>
+      </label>
+      <button type="submit" class="btn btn-primary btn-block mt-16" id="submit-btn">Analyze Audio</button>
+    </form>
+  </div>
+
+  <script>
+    const input = document.getElementById('audio-input');
+    const zone = document.getElementById('dropzone');
+    const text = document.getElementById('dropzone-text');
+    const form = document.getElementById('upload-form');
+    const submitBtn = document.getElementById('submit-btn');
+
+    input.addEventListener('change', () => {
+      if (input.files[0]) {
+        text.innerHTML = '<strong>' + input.files[0].name + '</strong><br><span class="link-muted">Ready to analyze</span>';
+      }
+    });
+    ['dragover'].forEach(evt => zone.addEventListener(evt, e => { e.preventDefault(); zone.classList.add('dragover'); }));
+    ['dragleave', 'drop'].forEach(evt => zone.addEventListener(evt, e => { e.preventDefault(); zone.classList.remove('dragover'); }));
+    zone.addEventListener('drop', e => {
+      if (e.dataTransfer.files[0]) {
+        input.files = e.dataTransfer.files;
+        input.dispatchEvent(new Event('change'));
+      }
+    });
+    form.addEventListener('submit', () => {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Analyzing...';
+    });
+  </script>
+
+  {% else %}
+
+  <div class="verdict-banner {% if result.prediction == 'REAL' %}real{% else %}fake{% endif %}">
+    <div>
+      <h2>{% if result.prediction == 'REAL' %}✅ Likely Authentic{% else %}⚠️ Likely Deepfake{% endif %}</h2>
+      <p style="color:inherit; opacity:0.8;">{{ result.filename }} · analyzed {{ result.analyzed_at }}</p>
+    </div>
+    <div class="text-center">
+      <div class="confidence-num">{{ result.confidence }}%</div>
+      <div style="font-size:12px; opacity:0.75;">confidence</div>
+    </div>
+  </div>
+
+  <div class="mt-16 mb-16 flex justify-between items-center card p-12">
+    <div>
+      <strong>🎙️ Voice Assistant Summary:</strong> <span class="text-secondary fs-13">Hear AI verdict, model accuracy & key findings.</span>
+    </div>
+    <button type="button" class="btn btn-outline btn-sm" onclick="speakAudioResult()">
+      🔊 Listen to Voice Summary
+    </button>
+  </div>
+
+
+  <div class="flex gap-12 mb-24">
+    <a href="{% url 'detection:analyze_audio' %}" class="btn btn-outline">Analyze Another Audio</a>
+    <a href="/report/{{ result.detection_id }}/download/" class="btn btn-primary">⬇ Download Full Report (PDF)</a>
+    {% if result.prediction == 'REAL' %}
+    <a href="/certificate/{{ result.detection_id }}/download/" class="btn btn-outline">🎖 Download Verified Certificate</a>
+    {% endif %}
+  </div>
+
+  <div class="analysis-tabs">
+    <div class="analysis-tab-btn active" onclick="showAnalysisTab('info')">Audio Information</div>
+    <div class="analysis-tab-btn" onclick="showAnalysisTab('ai')">AI Analysis</div>
+    <div class="analysis-tab-btn" onclick="showAnalysisTab('forensics')">Forensic Analysis</div>
+    <div class="analysis-tab-btn" onclick="showAnalysisTab('result')">Result Summary</div>
+    <div class="analysis-tab-btn" onclick="showAnalysisTab('report')">Complete Report</div>
+  </div>
+
+  <!-- AUDIO INFO -->
+  <div class="analysis-panel active" id="panel-info">
+    <div class="two-col">
+      <div>
+        <audio src="{{ result.audio_url }}" controls style="width:100%;"></audio>
+        <img src="{{ result.waveform_url }}" class="img-preview mt-16" alt="Waveform">
+      </div>
+      <div class="card">
+        <div class="section-title">File Details</div>
+        <table class="kv-table">
+          <tr><td>Filename</td><td>{{ result.filename }}</td></tr>
+          <tr><td>Format</td><td>{{ result.format }}</td></tr>
+          <tr><td>Duration</td><td>{{ result.duration_sec }} sec</td></tr>
+          <tr><td>Sample Rate</td><td>{{ result.sample_rate }} Hz</td></tr>
+          <tr><td>Channels</td><td>{{ result.channels }}</td></tr>
+          <tr><td>Subtype</td><td>{{ result.subtype }}</td></tr>
+          <tr><td>File Size</td><td>{{ result.file_size_kb }} KB</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI ANALYSIS -->
+  <div class="analysis-panel" id="panel-ai">
+    <div class="two-col">
+      <div class="card">
+        <div class="section-title">Model Prediction</div>
+        <table class="kv-table">
+          <tr><td>Model</td><td>CNN (Log-Mel Spectrogram)</td></tr>
+          <tr><td>Test Accuracy</td><td>99.93%</td></tr>
+          <tr><td>ROC-AUC</td><td>1.0000</td></tr>
+          <tr><td>Prediction</td><td>{{ result.prediction }}</td></tr>
+          <tr><td>Real Probability</td><td>{{ result.real_probability }}</td></tr>
+          <tr><td>Fake Probability</td><td>{{ result.fake_probability }}</td></tr>
+        </table>
+      </div>
+      <div class="card">
+        <div class="section-title">Confidence Breakdown</div>
+        <p>REAL</p>
+        <div class="progress-track"><div class="progress-fill real" style="width: {{ result.real_probability_pct }}%;"></div></div>
+        <p class="mt-16">FAKE</p>
+        <div class="progress-track"><div class="progress-fill fake" style="width: {{ result.fake_probability_pct }}%;"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FORENSICS -->
+  <div class="analysis-panel" id="panel-forensics">
+    <div class="two-col">
+      <div class="card">
+        <div class="section-title">Log-Mel Spectrogram</div>
+        <p style="font-size:13px;">The visual representation of the audio's frequency content over time, fed directly into the CNN.</p>
+        <img src="{{ result.spectrogram_url }}" class="img-preview mt-16" alt="Spectrogram">
+      </div>
+      <div class="card">
+        <div class="section-title">Grad-CAM Attention Map</div>
+        <p style="font-size:13px;">Shows which time/frequency regions of the spectrogram most influenced the model's decision.</p>
+        {% if result.gradcam_url %}
+        <img src="{{ result.gradcam_url }}" class="img-preview mt-16" alt="Grad-CAM heatmap">
+        <p class="mt-16">Focus area: <strong style="font-family:var(--font-mono);">{{ result.gradcam_focus_pct }}%</strong> of spectrogram</p>
+        {% else %}
+        <p class="link-muted mt-16">Grad-CAM could not be generated for this audio.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULT SUMMARY -->
+  <div class="analysis-panel" id="panel-result">
+    <div class="card">
+      <div class="section-title">Summary</div>
+      <table class="kv-table">
+        <tr><td>Final Verdict</td><td>{{ result.prediction }}</td></tr>
+        <tr><td>Confidence</td><td>{{ result.confidence }}%</td></tr>
+        <tr><td>Grad-CAM Focus</td><td>{{ result.gradcam_focus_pct|default:"—" }}%</td></tr>
+        <tr><td>Analyzed At</td><td>{{ result.analyzed_at }}</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- REPORT -->
+  <div class="analysis-panel" id="panel-report">
+    <div class="card text-center" style="padding:48px;">
+      <div style="font-size:40px;">📄</div>
+      <h3 class="mt-16">Complete Verification Report</h3>
+      <p>Download a full PDF report including the waveform, spectrogram, AI analysis, Grad-CAM visualization, and verification metadata.</p>
+      <a href="/report/{{ result.detection_id }}/download/" class="btn btn-primary mt-16">⬇ Download PDF Report</a>
+    </div>
+  </div>
+
+  <script>
+    function showAnalysisTab(name) {
+      document.querySelectorAll('.analysis-panel').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.analysis-tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById('panel-' + name).classList.add('active');
+      event.currentTarget.classList.add('active');
+    }
+  </script>
+
+  {% include "partials/result_chatbot_widget.html" %}
+  <script src="{% static 'js/result_chatbot.js' %}"></script>
+  <script src="{% static 'js/voice_assistant.js' %}"></script>
+  <script>
+    function speakAudioResult() {
+      if (window.speakAnalysisResult) {
+        window.speakAnalysisResult({
+          verdict: "{% if result.prediction == 'REAL' %}Likely Authentic Voice{% else %}Likely Synthetic Voice Deepfake{% endif %}",
+          confidence: "{{ result.confidence }}",
+          model: "CNN Log-Mel Spectrogram Classifier",
+          summary: "{% if result.prediction == 'REAL' %}Spectrogram harmonics match human voice pitch and breath patterns.{% else %}Synthetic vocoder artifacts or phase anomalies detected in audio harmonics.{% endif %}"
+        });
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      speakAudioResult();
+      initResultChatbot({
+        context: {
+          mediaType: "audio",
+          verdict: "{{ result.prediction }}",
+          verdictLabel: "{% if result.prediction == 'REAL' %}Likely Authentic{% else %}Likely Deepfake{% endif %}",
+          confidence: {{ result.confidence|default:"null" }},
+          modelName: "CNN (Log-Mel Spectrogram)",
+          filename: "{{ result.filename|escapejs }}",
+          extraFacts: [
+            {% if result.gradcam_focus_pct %}{ label: "Grad-CAM Focus", value: "{{ result.gradcam_focus_pct }}%" },{% endif %}
+          ],
+          flags: [],
+        },
+        elements: {
+          toggleBtn: document.getElementById('chatbot-toggle'),
+          panel: document.getElementById('chatbot-panel'),
+          messagesEl: document.getElementById('chatbot-messages'),
+          input: document.getElementById('chatbot-input'),
+          sendBtn: document.getElementById('chatbot-send'),
+          closeBtn: document.getElementById('chatbot-close'),
+        },
+      });
+    });
+  </script>
+
+  {% endif %}
+</div>
+{% endblock %}

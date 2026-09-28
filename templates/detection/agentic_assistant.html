@@ -1,0 +1,256 @@
+{% extends "app_base.html" %}
+{% load static %}
+
+{% block title %}Agentic AI Forensics Co-Pilot - VeriScan AI{% endblock %}
+
+{% block app_content %}
+<div class="page-container" style="max-width: 1200px; margin: 0 auto; padding: 24px;">
+
+  <!-- Header Banner -->
+  <div style="background: linear-gradient(135deg, #0f172a, #1e1b4b); border: 1px solid rgba(99, 102, 241, 0.3); padding: 24px; border-radius: 16px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);">
+    <div>
+      <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; margin-bottom: 8px;">
+        🤖 AUTONOMOUS AGENT ACTIVE
+      </div>
+      <h1 style="font-size: 28px; font-weight: 800; color: #f8fafc; margin: 0;">
+        Agentic AI Forensics Co-Pilot
+      </h1>
+      <p style="color: #94a3b8; font-size: 14px; margin-top: 6px; max-width: 650px;">
+        Upload <strong>any file type</strong> (Image, Video, Audio, Document/PDF, or Text). The agent automatically detects the format, executes multi-tool forensic pipelines, and provides transparent step-by-step reasoning traces.
+      </p>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 340px; gap: 24px;">
+    
+    <!-- Left Column: Unified Drag & Drop + Interactive Chat Console -->
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+
+      <!-- Drag & Drop Upload Zone -->
+      <div id="dropZone" style="border: 2px dashed #6366f1; background: rgba(15, 23, 42, 0.7); border-radius: 16px; padding: 28px; text-align: center; cursor: pointer; transition: all 0.2s ease;">
+        <input type="file" id="agentFileInput" style="display: none;" accept="image/*,video/*,audio/*,.pdf,.docx,.doc,.txt">
+        <div style="font-size: 42px; margin-bottom: 10px;">📁</div>
+        <h3 style="font-size: 18px; color: #f8fafc; font-weight: 700; margin: 0 0 6px 0;">
+          Drop any Image, Video, Audio, Document, or Text file here
+        </h3>
+        <p style="color: #94a3b8; font-size: 13px; margin: 0 0 16px 0;">
+          Auto Multi-Type Engine automatically routes your file (Image/Video/Audio/Document/Text) to the corresponding forensic pipeline.
+        </p>
+
+        <button type="button" onclick="document.getElementById('agentFileInput').click();" style="background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; border: none; padding: 10px 22px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer;">
+          Browse File
+        </button>
+        <span id="selectedFileName" style="display: block; margin-top: 12px; color: #34d399; font-weight: 600; font-size: 14px;"></span>
+      </div>
+
+      <!-- Chat History Console -->
+      <div class="card" style="background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 20px; display: flex; flex-direction: column; min-height: 400px; max-height: 600px;">
+        
+        <div id="chatStream" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; padding-right: 8px;">
+          
+          <div style="display: flex; gap: 12px; align-items: flex-start;">
+            <div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #4f46e5); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;">
+              🤖
+            </div>
+            <div style="background: #0f172a; border: 1px solid #334155; padding: 14px 18px; border-radius: 12px; color: #e2e8f0; font-size: 14px; line-height: 1.5; max-width: 90%;">
+              Hello <strong>{{ user.name }}</strong>! I am your autonomous <strong>VeriScan Agentic AI</strong>.<br><br>
+              You can drag & drop any file above or ask me a forensic question. I will automatically detect the media type and perform deep multi-tool investigation.
+            </div>
+          </div>
+
+          {% for msg in chat_messages %}
+            {% if msg.sender == "user" %}
+              <div style="display: flex; gap: 12px; align-items: flex-start; justify-content: flex-end;">
+                <div style="background: #3b82f6; color: white; padding: 12px 16px; border-radius: 12px; font-size: 14px; max-width: 80%;">
+                  {{ msg.content }}
+                </div>
+              </div>
+            {% else %}
+              <div style="display: flex; gap: 12px; align-items: flex-start;">
+                <div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #10b981, #059669); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;">
+                  🤖
+                </div>
+                <div style="background: #0f172a; border: 1px solid #334155; padding: 14px 18px; border-radius: 12px; color: #e2e8f0; font-size: 14px; line-height: 1.5; max-width: 90%;">
+                  {{ msg.content|linebreaksbr }}
+                </div>
+              </div>
+            {% endif %}
+          {% endfor %}
+
+        </div>
+
+        <!-- Input Box & Submit -->
+        <div style="margin-top: 16px; display: flex; gap: 10px; align-items: center;">
+          <input type="text" id="chatInput" placeholder="Ask the agent a question or add prompt for uploaded media..." style="flex: 1; background: #0f172a; border: 1px solid #475569; color: #f8fafc; padding: 12px 16px; border-radius: 10px; font-size: 14px;">
+          <button type="button" id="sendBtn" style="background: #10b981; color: white; border: none; padding: 12px 24px; border-radius: 10px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+            <span>Analyze / Send</span> 🚀
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Right Column: Live Agent Thought & Tool Trace Drawer -->
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      
+      <div class="card" style="background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 20px;">
+        <h3 style="font-size: 16px; font-weight: 700; color: #f8fafc; margin: 0 0 14px 0; display: flex; align-items: center; gap: 8px;">
+          🧠 Agent Thought & Tool Trace
+        </h3>
+        <p style="color: #94a3b8; font-size: 12px; margin-bottom: 16px;">
+          Transparent execution steps of autonomous tools dispatched by the agent.
+        </p>
+
+        <div id="traceContainer" style="display: flex; flex-direction: column; gap: 12px;">
+          <div style="background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 12px; color: #94a3b8; font-size: 13px; text-align: center;">
+            Waiting for media upload or prompt to begin tool trace...
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Auto Multi-Type Detection Badges -->
+      <div class="card" style="background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 20px;">
+        <h4 style="font-size: 14px; font-weight: 700; color: #cbd5e1; margin: 0 0 12px 0;">
+          Supported Auto-Detect Formats:
+        </h4>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+          <span style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;">🖼️ Image (JPG/PNG/WEBP)</span>
+          <span style="background: rgba(168, 85, 247, 0.2); color: #c084fc; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;">🎥 Video (MP4/MOV/AVI)</span>
+          <span style="background: rgba(234, 179, 8, 0.2); color: #fde047; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;">🎵 Audio (MP3/WAV/OGG)</span>
+          <span style="background: rgba(16, 185, 129, 0.2); color: #34d399; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;">📄 Document (PDF/DOCX/DOC)</span>
+          <span style="background: rgba(244, 63, 94, 0.2); color: #fb7185; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;">📝 Text (TXT/NLP Prompt)</span>
+        </div>
+      </div>
+
+
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+  const session_id = "{{ session.session_id }}";
+  const fileInput = document.getElementById('agentFileInput');
+  const dropZone = document.getElementById('dropZone');
+  const fileNameDisplay = document.getElementById('selectedFileName');
+  const sendBtn = document.getElementById('sendBtn');
+  const chatInput = document.getElementById('chatInput');
+  const chatStream = document.getElementById('chatStream');
+  const traceContainer = document.getElementById('traceContainer');
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length > 0) {
+      fileNameDisplay.textContent = "Selected File: " + fileInput.files[0].name;
+    }
+  });
+
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.style.borderColor = '#10b981';
+    dropZone.style.background = 'rgba(16, 185, 129, 0.1)';
+  });
+
+  dropZone.addEventListener('dragleave', () => {
+    dropZone.style.borderColor = '#6366f1';
+    dropZone.style.background = 'rgba(15, 23, 42, 0.7)';
+  });
+
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.style.borderColor = '#6366f1';
+    dropZone.style.background = 'rgba(15, 23, 42, 0.7)';
+    if (e.dataTransfer.files.length > 0) {
+      fileInput.files = e.dataTransfer.files;
+      fileNameDisplay.textContent = "Selected File: " + fileInput.files[0].name;
+    }
+  });
+
+  sendBtn.addEventListener('click', async () => {
+    const text = chatInput.value.trim();
+    const file = fileInput.files[0];
+
+    if (!text && !file) {
+      alert("Please select a file or enter a prompt.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('session_id', session_id);
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    if (text) formData.append('message', text);
+    if (file) formData.append('media_file', file);
+
+    // Render user message in UI
+    if (text || file) {
+      const userBubble = document.createElement('div');
+      userBubble.style.cssText = "display: flex; gap: 12px; align-items: flex-start; justify-content: flex-end;";
+      userBubble.innerHTML = `
+        <div style="background: #3b82f6; color: white; padding: 12px 16px; border-radius: 12px; font-size: 14px; max-width: 80%;">
+          ${file ? '📁 ' + file.name + '<br>' : ''}${text}
+        </div>
+      `;
+      chatStream.appendChild(userBubble);
+      chatStream.scrollTop = chatStream.scrollHeight;
+    }
+
+    // Show loading indicator
+    traceContainer.innerHTML = `
+      <div style="background: #0f172a; border: 1px solid #6366f1; border-radius: 10px; padding: 14px; color: #818cf8; font-size: 13px; display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 18px; animation: spin 1s infinite linear;">⚙️</span> Autonomous tools running...
+      </div>
+    `;
+
+    chatInput.value = '';
+    fileInput.value = '';
+    fileNameDisplay.textContent = '';
+
+    try {
+      const resp = await fetch("{% url 'detection:agentic_chat_api' %}", {
+        method: 'POST',
+        body: formData
+      });
+      const data = await resp.json();
+
+      if (data.status === 'success') {
+        // Render agent reply
+        const agentBubble = document.createElement('div');
+        agentBubble.style.cssText = "display: flex; gap: 12px; align-items: flex-start;";
+        agentBubble.innerHTML = `
+          <div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #10b981, #059669); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;">🤖</div>
+          <div style="background: #0f172a; border: 1px solid #334155; padding: 14px 18px; border-radius: 12px; color: #e2e8f0; font-size: 14px; line-height: 1.5; max-width: 90%;">
+            ${data.reply.replace(/\n/g, '<br>')}
+          </div>
+        `;
+        chatStream.appendChild(agentBubble);
+        chatStream.scrollTop = chatStream.scrollHeight;
+
+        // Render thought traces
+        if (data.traces && data.traces.length > 0) {
+          traceContainer.innerHTML = '';
+          data.traces.forEach(t => {
+            const stepDiv = document.createElement('div');
+            stepDiv.style.cssText = "background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 12px;";
+            stepDiv.innerHTML = `
+              <div style="font-weight: 700; color: #34d399; font-size: 13px;">${t.title}</div>
+              <div style="color: #cbd5e1; font-size: 12px; margin-top: 4px;">${t.detail}</div>
+            `;
+            traceContainer.appendChild(stepDiv);
+          });
+        }
+      }
+    } catch (err) {
+      alert("Error analyzing file with agent: " + err);
+    }
+  });
+</script>
+
+<style>
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+</style>
+{% endblock %}
