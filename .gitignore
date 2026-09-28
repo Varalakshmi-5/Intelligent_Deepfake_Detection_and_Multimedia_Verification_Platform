@@ -15,3 +15,4 @@ media/agent_uploads/*
 venv/
 *.pdf
 .idea/
+.env.example
