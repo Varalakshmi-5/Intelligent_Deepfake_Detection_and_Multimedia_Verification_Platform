@@ -33,8 +33,9 @@ COPY . /app/
 RUN mkdir -p /app/media/uploads /app/media/reports
 RUN python manage.py collectstatic --noinput
 
-# Expose port 8000
-EXPOSE 8000
+# Default PORT to 10000 if not set by Render
+ENV PORT=10000
+EXPOSE 10000
 
-# Run Gunicorn WSGI server with 1 worker to stay strictly under 512MB RAM
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "1", "--threads", "2", "--timeout", "120", "deepfake_platform.wsgi:application"]
+# Run Gunicorn WSGI server reading dynamic PORT variable from Render
+CMD gunicorn --bind 0.0.0.0:${PORT:-10000} --workers 1 --threads 2 --timeout 120 deepfake_platform.wsgi:application
