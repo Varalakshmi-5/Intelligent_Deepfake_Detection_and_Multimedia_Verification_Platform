@@ -24,7 +24,7 @@ RUN pip install --no-cache-dir --upgrade pip
 # Copy requirements file and install Python packages
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install --no-cache-dir gunicorn whitenoise tf-keras
+RUN pip install --no-cache-dir gunicorn whitenoise
 
 # Copy project files
 COPY . /app/
