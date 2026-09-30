@@ -36,5 +36,5 @@ RUN python manage.py collectstatic --noinput
 # Expose port 8000
 EXPOSE 8000
 
-# Run Gunicorn WSGI server
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "120", "deepfake_platform.wsgi:application"]
+# Run Gunicorn WSGI server with 1 worker to stay strictly under 512MB RAM
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "1", "--threads", "2", "--timeout", "120", "deepfake_platform.wsgi:application"]
